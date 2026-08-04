@@ -6,10 +6,13 @@ import { app, BrowserWindow, dialog, ipcMain, Menu } from "electron";
 import { DocumentDatabase } from "./main/document-database.js";
 import { registerIpcHandlers } from "./main/ipc.js";
 import { scanChromiumProfiles } from "./main/legacy-migration.js";
+import { ensurePersistentDocumentDatabase, resolveElectronUserDataPath } from "./main/storage-path.js";
 import { StartupController } from "./main/startup-controller.js";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const startupPort = 43_017;
+
+app.setPath("userData", resolveElectronUserDataPath({ appDataRoot: app.getPath("appData") }));
 
 function staticPath(name: string) {
   return app.isPackaged
@@ -88,7 +91,7 @@ async function createMigrationWindow(parent: BrowserWindow) {
 }
 
 app.whenReady().then(async () => {
-  const database = new DocumentDatabase(join(app.getPath("userData"), "tda-car-rental.sqlite"));
+  const database = new DocumentDatabase(ensurePersistentDocumentDatabase({ appDataRoot: app.getPath("appData") }));
   registerIpcHandlers({
     database,
     dialog,
