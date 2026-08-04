@@ -32,6 +32,9 @@ npm run dist:win
 ```
 
 The packaged application stores documents in its Electron user-data SQLite
-database. To bring forward documents from a previous browser-based version,
-use **Data → Migrate legacy data…** and either search browser data or select a
-SQLite backup file.
+database at `%APPDATA%/TDA Car Rental/tda-car-rental.sqlite`. If an older
+desktop build stored data at `%APPDATA%/tanstack_start_ts/tda-car-rental.sqlite`,
+the app moves that database into the branded folder on first launch. To bring
+forward documents from a previous browser-based version, use the desktop
+app's **Data > Migrate legacy data...** action and either search browser data
+or select a SQLite backup file.
