@@ -10,17 +10,25 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AcknowledgementReceiptsRouteImport } from './routes/acknowledgement-receipts'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as ContractsRouteImport } from './routes/contracts'
 import { Route as QuotationRouteImport } from './routes/quotation'
+import { Route as AcknowledgementReceiptsNewRouteImport } from './routes/acknowledgement-receipts_.new'
 import { Route as BillingNewRouteImport } from './routes/billing_.new'
 import { Route as QuotationNewRouteImport } from './routes/quotation_.new'
+import { Route as AcknowledgementReceiptsIdEditRouteImport } from './routes/acknowledgement-receipts_.$id.edit'
 import { Route as BillingIdEditRouteImport } from './routes/billing_.$id.edit'
 import { Route as QuotationIdEditRouteImport } from './routes/quotation_.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcknowledgementReceiptsRoute = AcknowledgementReceiptsRouteImport.update({
+  id: '/acknowledgement-receipts',
+  path: '/acknowledgement-receipts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BillingRoute = BillingRouteImport.update({
@@ -38,6 +46,12 @@ const QuotationRoute = QuotationRouteImport.update({
   path: '/quotation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AcknowledgementReceiptsNewRoute =
+  AcknowledgementReceiptsNewRouteImport.update({
+    id: '/acknowledgement-receipts_/new',
+    path: '/acknowledgement-receipts/new',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const BillingNewRoute = BillingNewRouteImport.update({
   id: '/billing_/new',
   path: '/billing/new',
@@ -48,6 +62,12 @@ const QuotationNewRoute = QuotationNewRouteImport.update({
   path: '/quotation/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AcknowledgementReceiptsIdEditRoute =
+  AcknowledgementReceiptsIdEditRouteImport.update({
+    id: '/acknowledgement-receipts_/$id/edit',
+    path: '/acknowledgement-receipts/$id/edit',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const BillingIdEditRoute = BillingIdEditRouteImport.update({
   id: '/billing_/$id/edit',
   path: '/billing/$id/edit',
@@ -61,32 +81,41 @@ const QuotationIdEditRoute = QuotationIdEditRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/acknowledgement-receipts': typeof AcknowledgementReceiptsRoute
   '/billing': typeof BillingRoute
   '/contracts': typeof ContractsRoute
   '/quotation': typeof QuotationRoute
+  '/acknowledgement-receipts/new': typeof AcknowledgementReceiptsNewRoute
   '/billing/new': typeof BillingNewRoute
   '/quotation/new': typeof QuotationNewRoute
+  '/acknowledgement-receipts/$id/edit': typeof AcknowledgementReceiptsIdEditRoute
   '/billing/$id/edit': typeof BillingIdEditRoute
   '/quotation/$id/edit': typeof QuotationIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/acknowledgement-receipts': typeof AcknowledgementReceiptsRoute
   '/billing': typeof BillingRoute
   '/contracts': typeof ContractsRoute
   '/quotation': typeof QuotationRoute
+  '/acknowledgement-receipts/new': typeof AcknowledgementReceiptsNewRoute
   '/billing/new': typeof BillingNewRoute
   '/quotation/new': typeof QuotationNewRoute
+  '/acknowledgement-receipts/$id/edit': typeof AcknowledgementReceiptsIdEditRoute
   '/billing/$id/edit': typeof BillingIdEditRoute
   '/quotation/$id/edit': typeof QuotationIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/acknowledgement-receipts': typeof AcknowledgementReceiptsRoute
   '/billing': typeof BillingRoute
   '/contracts': typeof ContractsRoute
   '/quotation': typeof QuotationRoute
+  '/acknowledgement-receipts_/new': typeof AcknowledgementReceiptsNewRoute
   '/billing_/new': typeof BillingNewRoute
   '/quotation_/new': typeof QuotationNewRoute
+  '/acknowledgement-receipts_/$id/edit': typeof AcknowledgementReceiptsIdEditRoute
   '/billing_/$id/edit': typeof BillingIdEditRoute
   '/quotation_/$id/edit': typeof QuotationIdEditRoute
 }
@@ -94,42 +123,54 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/acknowledgement-receipts'
     | '/billing'
     | '/contracts'
     | '/quotation'
+    | '/acknowledgement-receipts/new'
     | '/billing/new'
     | '/quotation/new'
+    | '/acknowledgement-receipts/$id/edit'
     | '/billing/$id/edit'
     | '/quotation/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/acknowledgement-receipts'
     | '/billing'
     | '/contracts'
     | '/quotation'
+    | '/acknowledgement-receipts/new'
     | '/billing/new'
     | '/quotation/new'
+    | '/acknowledgement-receipts/$id/edit'
     | '/billing/$id/edit'
     | '/quotation/$id/edit'
   id:
     | '__root__'
     | '/'
+    | '/acknowledgement-receipts'
     | '/billing'
     | '/contracts'
     | '/quotation'
+    | '/acknowledgement-receipts_/new'
     | '/billing_/new'
     | '/quotation_/new'
+    | '/acknowledgement-receipts_/$id/edit'
     | '/billing_/$id/edit'
     | '/quotation_/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcknowledgementReceiptsRoute: typeof AcknowledgementReceiptsRoute
   BillingRoute: typeof BillingRoute
   ContractsRoute: typeof ContractsRoute
   QuotationRoute: typeof QuotationRoute
+  AcknowledgementReceiptsNewRoute: typeof AcknowledgementReceiptsNewRoute
   BillingNewRoute: typeof BillingNewRoute
   QuotationNewRoute: typeof QuotationNewRoute
+  AcknowledgementReceiptsIdEditRoute: typeof AcknowledgementReceiptsIdEditRoute
   BillingIdEditRoute: typeof BillingIdEditRoute
   QuotationIdEditRoute: typeof QuotationIdEditRoute
 }
@@ -141,6 +182,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acknowledgement-receipts': {
+      id: '/acknowledgement-receipts'
+      path: '/acknowledgement-receipts'
+      fullPath: '/acknowledgement-receipts'
+      preLoaderRoute: typeof AcknowledgementReceiptsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/billing': {
@@ -164,6 +212,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuotationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/acknowledgement-receipts_/new': {
+      id: '/acknowledgement-receipts_/new'
+      path: '/acknowledgement-receipts/new'
+      fullPath: '/acknowledgement-receipts/new'
+      preLoaderRoute: typeof AcknowledgementReceiptsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/billing_/new': {
       id: '/billing_/new'
       path: '/billing/new'
@@ -176,6 +231,13 @@ declare module '@tanstack/react-router' {
       path: '/quotation/new'
       fullPath: '/quotation/new'
       preLoaderRoute: typeof QuotationNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acknowledgement-receipts_/$id/edit': {
+      id: '/acknowledgement-receipts_/$id/edit'
+      path: '/acknowledgement-receipts/$id/edit'
+      fullPath: '/acknowledgement-receipts/$id/edit'
+      preLoaderRoute: typeof AcknowledgementReceiptsIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/billing_/$id/edit': {
@@ -197,11 +259,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcknowledgementReceiptsRoute: AcknowledgementReceiptsRoute,
   BillingRoute: BillingRoute,
   ContractsRoute: ContractsRoute,
   QuotationRoute: QuotationRoute,
+  AcknowledgementReceiptsNewRoute: AcknowledgementReceiptsNewRoute,
   BillingNewRoute: BillingNewRoute,
   QuotationNewRoute: QuotationNewRoute,
+  AcknowledgementReceiptsIdEditRoute: AcknowledgementReceiptsIdEditRoute,
   BillingIdEditRoute: BillingIdEditRoute,
   QuotationIdEditRoute: QuotationIdEditRoute,
 }

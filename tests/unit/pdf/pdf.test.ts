@@ -105,6 +105,21 @@ describe("generatePdf", () => {
     expect(pdf.output()).not.toContain("/Subtype /Image");
   });
 
+  signatureTest("renders acknowledgement receipts with the local signature", async () => {
+    const pdf = await generatePdf({
+      docType: "acknowledgement",
+      date: "26-Jul-26",
+      refNo: "004",
+      amount: 5000,
+      details: "July 25, 2026 Easy Park office to Park Inn Hotel, Clark",
+      receivedBy: "Easy Park Office - SBFZ",
+      dateReceived: "26-Jul-26",
+    });
+
+    expect(pdf.output()).toContain("/Subtype /Image");
+    expect(pdf.output()).toContain("Acknowledgment Receipt");
+  });
+
   it("renders billing Units from line items with shared merged spans", async () => {
     const pdf = await generatePdf({
       ...input,

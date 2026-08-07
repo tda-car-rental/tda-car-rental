@@ -6,6 +6,7 @@ const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/billing", label: "Billing", icon: FileText },
   { to: "/quotation", label: "Quotation", icon: FileSpreadsheet },
+  { to: "/acknowledgement-receipts", label: "Acknowledgement Receipts", icon: FileText },
   { to: "/contracts", label: "Contracts", icon: FileSignature },
 ] as const;
 
@@ -16,7 +17,7 @@ export function AppLayout({ children, title }: { children: RN; title: string }) 
       <aside className="flex h-screen w-56 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
         <div className="px-5 py-5 border-b">
           <div className="font-bold text-sm leading-tight">TDA Car Rental</div>
-          <div className="text-[11px] text-muted-foreground">Billing & Quotation</div>
+          <div className="text-[11px] text-muted-foreground">Billing, Quotation & Receipts</div>
         </div>
         <nav className="p-3 space-y-1">
           {nav.map((n) => {

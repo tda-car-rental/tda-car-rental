@@ -8,6 +8,17 @@ export function DocList({ docType }: { docType: DocType }) {
   const [docs, setDocs] = useState<DocRow[]>([]);
   const navigate = useNavigate();
 
+  const label = docType === "billing"
+    ? "Billing"
+    : docType === "quotation"
+      ? "Quotation"
+      : "Acknowledgement Receipt";
+  const pluralLabel = docType === "billing"
+    ? "Billings"
+    : docType === "quotation"
+      ? "Quotations"
+      : "Acknowledgement Receipts";
+
   const refresh = useCallback(async () => {
     const all = await listDocs();
     setDocs(all.filter((doc) => doc.doc_type === docType));
@@ -19,14 +30,17 @@ export function DocList({ docType }: { docType: DocType }) {
 
   const openCreate = () => {
     if (docType === "billing") navigate({ to: "/billing/new" });
-    else navigate({ to: "/quotation/new" });
+    else if (docType === "quotation") navigate({ to: "/quotation/new" });
+    else navigate({ to: "/acknowledgement-receipts/new" });
   };
 
   const openEdit = (id: number) => {
     if (docType === "billing") {
       navigate({ to: "/billing/$id/edit", params: { id: String(id) } });
-    } else {
+    } else if (docType === "quotation") {
       navigate({ to: "/quotation/$id/edit", params: { id: String(id) } });
+    } else {
+      navigate({ to: "/acknowledgement-receipts/$id/edit", params: { id: String(id) } });
     }
   };
 
@@ -35,14 +49,27 @@ export function DocList({ docType }: { docType: DocType }) {
     await refresh();
   };
 
-  const downloadDoc = async (doc: DocRow) => {
+  const toPdfInput = (doc: DocRow) => {
+    if (doc.doc_type === "acknowledgement") {
+      return {
+        docType: "acknowledgement" as const,
+        date: doc.doc_date,
+        refNo: doc.ack_ref_no,
+        amount: doc.ack_amount,
+        details: doc.ack_details,
+        receivedBy: doc.ack_received_by,
+        dateReceived: doc.ack_date_received,
+      };
+    }
+
     let items: Item[] = [];
     try {
       items = JSON.parse(doc.items_json);
     } catch {
       // Existing records may predate current validation; leave their PDF line items empty.
     }
-    const pdf = await generatePdf({
+
+    return {
       docType: doc.doc_type,
       date: doc.doc_date,
       billedTo: doc.billed_to,
@@ -50,27 +77,17 @@ export function DocList({ docType }: { docType: DocType }) {
       driver: doc.driver,
       requestor: doc.requestor,
       items,
-    });
+    };
+  };
+
+  const downloadDoc = async (doc: DocRow) => {
+    const pdf = await generatePdf(toPdfInput(doc));
     pdf.save(`${doc.doc_type}-${doc.doc_date.replace(/\s+/g, "_")}.pdf`);
   };
 
   const previewDoc = async (doc: DocRow) => {
-    let items: Item[] = [];
-    try {
-      items = JSON.parse(doc.items_json);
-    } catch {
-      // Existing records may predate current validation; leave their PDF line items empty.
-    }
     const previewWindow = window.open("", "_blank");
-    const pdf = await generatePdf({
-      docType: doc.doc_type,
-      date: doc.doc_date,
-      billedTo: doc.billed_to,
-      unit: doc.unit,
-      driver: doc.driver,
-      requestor: doc.requestor,
-      items,
-    });
+    const pdf = await generatePdf(toPdfInput(doc));
     const url = pdf.output("bloburl");
     if (previewWindow) {
       previewWindow.location.href = url;
@@ -79,13 +96,11 @@ export function DocList({ docType }: { docType: DocType }) {
     }
   };
 
-  const label = docType === "billing" ? "Billing" : "Quotation";
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {docs.length} {label.toLowerCase()}
+          {docs.length} {pluralLabel.toLowerCase()}
           {docs.length === 1 ? "" : "s"} saved
         </p>
         <button onClick={openCreate} className="btn-primary gap-1.5">
@@ -96,15 +111,17 @@ export function DocList({ docType }: { docType: DocType }) {
       <div className="overflow-hidden rounded-md border bg-card">
         {docs.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            No {label.toLowerCase()}s yet. Click “Create {label}” to add one.
+            No {pluralLabel.toLowerCase()} yet. Click “Create {label}” to add one.
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr className="text-left">
                 <th className="p-3">Date</th>
-                <th className="p-3">{docType === "billing" ? "Billed To" : "Requestor"}</th>
-                <th className="p-3">Unit</th>
+                <th className="p-3">
+                  {docType === "billing" ? "Billed To" : docType === "quotation" ? "Requestor" : "Ref No."}
+                </th>
+                <th className="p-3">{docType === "acknowledgement" ? "Received By" : "Unit"}</th>
                 <th className="p-3 text-right">Total</th>
                 <th className="w-32 p-3 text-right">Actions</th>
               </tr>
@@ -117,10 +134,16 @@ export function DocList({ docType }: { docType: DocType }) {
                   onClick={() => openEdit(doc.id)}
                 >
                   <td className="p-3">{doc.doc_date}</td>
-                  <td className="p-3">{docType === "billing" ? doc.billed_to : doc.requestor}</td>
-                  <td className="p-3">{doc.unit}</td>
+                  <td className="p-3">
+                    {docType === "billing"
+                      ? doc.billed_to
+                      : docType === "quotation"
+                        ? doc.requestor
+                        : doc.ack_ref_no}
+                  </td>
+                  <td className="p-3">{docType === "acknowledgement" ? doc.ack_received_by : doc.unit}</td>
                   <td className="p-3 text-right">
-                    PHP {Number(doc.total).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                    PHP {Number(docType === "acknowledgement" ? doc.ack_amount : doc.total).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                   </td>
                   <td className="p-3 text-right" onClick={(event) => event.stopPropagation()}>
                     <div className="inline-flex gap-1">

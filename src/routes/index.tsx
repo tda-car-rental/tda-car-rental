@@ -22,15 +22,16 @@ function Dashboard() {
 
   const billings = docs.filter((d) => d.doc_type === "billing");
   const quotations = docs.filter((d) => d.doc_type === "quotation");
+  const acknowledgements = docs.filter((d) => d.doc_type === "acknowledgement");
 
   const chartData = useMemo(() => {
     // Aggregate last 6 months by created_at
     const now = new Date();
-    const months: { key: string; label: string; billing: number; quotation: number }[] = [];
+    const months: { key: string; label: string; billing: number; quotation: number; acknowledgement: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
-      months.push({ key, label: d.toLocaleString("en-US", { month: "short" }), billing: 0, quotation: 0 });
+      months.push({ key, label: d.toLocaleString("en-US", { month: "short" }), billing: 0, quotation: 0, acknowledgement: 0 });
     }
     docs.forEach((doc) => {
       const dt = new Date(doc.created_at);
@@ -43,13 +44,14 @@ function Dashboard() {
 
   const totalBilling = billings.reduce((s, d) => s + Number(d.total || 0), 0);
   const totalQuote = quotations.reduce((s, d) => s + Number(d.total || 0), 0);
+  const totalAck = acknowledgements.reduce((s, d) => s + Number(d.ack_amount || d.total || 0), 0);
 
   return (
     <AppLayout title="Dashboard">
       <div className="grid gap-4 md:grid-cols-3 mb-6">
         <Stat label="Total Billings" value={billings.length.toString()} sub={`PHP ${totalBilling.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`} />
         <Stat label="Total Quotations" value={quotations.length.toString()} sub={`PHP ${totalQuote.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`} />
-        <Stat label="Documents" value={docs.length.toString()} sub="All time" />
+        <Stat label="Acknowledgement Receipts" value={acknowledgements.length.toString()} sub={`PHP ${totalAck.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -64,6 +66,7 @@ function Dashboard() {
                 <Tooltip formatter={(v: number) => `PHP ${v.toLocaleString("en-PH")}`} />
                 <Bar dataKey="billing" fill="var(--color-chart-1)" name="Billing" />
                 <Bar dataKey="quotation" fill="var(--color-chart-2)" name="Quotation" />
+                <Bar dataKey="acknowledgement" fill="var(--color-chart-3)" name="Acknowledgement" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -72,6 +75,7 @@ function Dashboard() {
         <div className="space-y-6">
           <RecentList title="Recent Billings" docs={billings.slice(0, 5)} to="/billing" emptyLabel="No billings yet." nameKey="billed_to" />
           <RecentList title="Recent Quotations" docs={quotations.slice(0, 5)} to="/quotation" emptyLabel="No quotations yet." nameKey="requestor" />
+          <RecentList title="Recent Acknowledgements" docs={acknowledgements.slice(0, 5)} to="/acknowledgement-receipts" emptyLabel="No acknowledgement receipts yet." nameKey="ack_received_by" />
         </div>
       </div>
     </AppLayout>
@@ -91,7 +95,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
 function RecentList({
   title, docs, to, emptyLabel, nameKey,
 }: {
-  title: string; docs: DocRow[]; to: "/billing" | "/quotation"; emptyLabel: string; nameKey: "billed_to" | "requestor";
+  title: string; docs: DocRow[]; to: "/billing" | "/quotation" | "/acknowledgement-receipts"; emptyLabel: string; nameKey: "billed_to" | "requestor" | "ack_received_by";
 }) {
   return (
     <section className="rounded-lg border bg-card p-5">

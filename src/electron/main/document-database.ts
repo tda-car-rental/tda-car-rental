@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 
-export type DocumentType = "billing" | "quotation";
+export type DocumentType = "billing" | "quotation" | "acknowledgement";
 
 export type DocumentInput = {
   doc_type: DocumentType;
@@ -12,6 +12,11 @@ export type DocumentInput = {
   requestor: string;
   total: number;
   items_json: string;
+  ack_ref_no: string;
+  ack_amount: number;
+  ack_details: string;
+  ack_received_by: string;
+  ack_date_received: string;
 };
 
 export type StoredDocument = DocumentInput & {
@@ -29,6 +34,11 @@ const documentColumns = `
   requestor,
   total,
   items_json,
+  ack_ref_no,
+  ack_amount,
+  ack_details,
+  ack_received_by,
+  ack_date_received,
   created_at
 `;
 
@@ -60,15 +70,31 @@ export class DocumentDatabase {
         requestor TEXT,
         total REAL,
         items_json TEXT,
+        ack_ref_no TEXT DEFAULT '',
+        ack_amount REAL DEFAULT 0,
+        ack_details TEXT DEFAULT '',
+        ack_received_by TEXT DEFAULT '',
+        ack_date_received TEXT DEFAULT '',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    this.ensureColumn("ack_ref_no", "TEXT DEFAULT ''");
+    this.ensureColumn("ack_amount", "REAL DEFAULT 0");
+    this.ensureColumn("ack_details", "TEXT DEFAULT ''");
+    this.ensureColumn("ack_received_by", "TEXT DEFAULT ''");
+    this.ensureColumn("ack_date_received", "TEXT DEFAULT ''");
+  }
+
+  private ensureColumn(name: string, definition: string) {
+    const columns = this.database.prepare("PRAGMA table_info(docs)").all() as Array<{ name: string }>;
+    if (columns.some((column) => column.name === name)) return;
+    this.database.exec(`ALTER TABLE docs ADD COLUMN ${name} ${definition}`);
   }
 
   save(input: DocumentInput): number {
     const result = this.database.prepare(`
-      INSERT INTO docs (doc_type, doc_date, billed_to, unit, driver, requestor, total, items_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO docs (doc_type, doc_date, billed_to, unit, driver, requestor, total, items_json, ack_ref_no, ack_amount, ack_details, ack_received_by, ack_date_received)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       input.doc_type,
       input.doc_date,
@@ -78,6 +104,11 @@ export class DocumentDatabase {
       input.requestor,
       input.total,
       input.items_json,
+      input.ack_ref_no,
+      input.ack_amount,
+      input.ack_details,
+      input.ack_received_by,
+      input.ack_date_received,
     );
     return Number(result.lastInsertRowid);
   }
@@ -91,7 +122,7 @@ export class DocumentDatabase {
   update(id: number, input: DocumentInput): void {
     this.database.prepare(`
       UPDATE docs
-      SET doc_type = ?, doc_date = ?, billed_to = ?, unit = ?, driver = ?, requestor = ?, total = ?, items_json = ?
+      SET doc_type = ?, doc_date = ?, billed_to = ?, unit = ?, driver = ?, requestor = ?, total = ?, items_json = ?, ack_ref_no = ?, ack_amount = ?, ack_details = ?, ack_received_by = ?, ack_date_received = ?
       WHERE id = ?
     `).run(
       input.doc_type,
@@ -102,6 +133,11 @@ export class DocumentDatabase {
       input.requestor,
       input.total,
       input.items_json,
+      input.ack_ref_no,
+      input.ack_amount,
+      input.ack_details,
+      input.ack_received_by,
+      input.ack_date_received,
       id,
     );
   }
@@ -132,8 +168,8 @@ export class DocumentDatabase {
         DocumentInput & { created_at: string }
       >;
       const insert = this.database.prepare(`
-        INSERT INTO docs (doc_type, doc_date, billed_to, unit, driver, requestor, total, items_json, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO docs (doc_type, doc_date, billed_to, unit, driver, requestor, total, items_json, ack_ref_no, ack_amount, ack_details, ack_received_by, ack_date_received, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       let transactionStarted = false;
       try {
@@ -149,6 +185,11 @@ export class DocumentDatabase {
             document.requestor,
             document.total,
             document.items_json,
+            "",
+            0,
+            "",
+            "",
+            "",
             document.created_at,
           );
         }

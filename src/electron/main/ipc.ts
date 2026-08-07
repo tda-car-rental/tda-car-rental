@@ -43,11 +43,27 @@ function positiveInteger(value: unknown): number {
 function documentInput(value: unknown): DocumentInput {
   if (!value || typeof value !== "object") throw new Error("Document data is required.");
   const input = value as Record<string, unknown>;
-  const stringFields = ["doc_type", "doc_date", "billed_to", "unit", "driver", "requestor", "items_json"] as const;
-  if (stringFields.some((field) => typeof input[field] !== "string") || typeof input.total !== "number") {
+  const stringFields = [
+    "doc_type",
+    "doc_date",
+    "billed_to",
+    "unit",
+    "driver",
+    "requestor",
+    "items_json",
+    "ack_ref_no",
+    "ack_details",
+    "ack_received_by",
+    "ack_date_received",
+  ] as const;
+  if (
+    stringFields.some((field) => typeof input[field] !== "string") ||
+    typeof input.total !== "number" ||
+    typeof input.ack_amount !== "number"
+  ) {
     throw new Error("Document data is invalid.");
   }
-  if (input.doc_type !== "billing" && input.doc_type !== "quotation") {
+  if (input.doc_type !== "billing" && input.doc_type !== "quotation" && input.doc_type !== "acknowledgement") {
     throw new Error("Document type is invalid.");
   }
   return input as unknown as DocumentInput;

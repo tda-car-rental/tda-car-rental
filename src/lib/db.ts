@@ -1,6 +1,6 @@
 import { electronApi } from "./electron-api";
 
-export type DocType = "billing" | "quotation";
+export type DocType = "billing" | "quotation" | "acknowledgement";
 
 export interface DocRow {
   id: number;
@@ -12,6 +12,11 @@ export interface DocRow {
   requestor: string;
   total: number;
   items_json: string;
+  ack_ref_no: string;
+  ack_amount: number;
+  ack_details: string;
+  ack_received_by: string;
+  ack_date_received: string;
   created_at: string;
 }
 

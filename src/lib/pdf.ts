@@ -8,22 +8,35 @@ const signatureAssets = import.meta.glob("../../signature/*.{jpg,jpeg,png,JPG,JP
   import: "default",
   query: "?url",
 }) as Record<string, string>;
-const [signaturePath, signatureUrl] = Object.entries(signatureAssets).sort(([left], [right]) =>
-  left.localeCompare(right),
-)[0] ?? [];
+const [signaturePath, signatureUrl] = Object.entries(signatureAssets).sort(([left], [right]) => {
+  const leftIsPng = left.toLowerCase().endsWith(".png");
+  const rightIsPng = right.toLowerCase().endsWith(".png");
+  if (leftIsPng !== rightIsPng) return leftIsPng ? -1 : 1;
+  return left.localeCompare(right);
+})[0] ?? [];
 
-export interface PdfInput {
-  docType: "billing" | "quotation";
-  date: string; // e.g. "14 June 2026"
-  billedTo?: string;
-  unit: string;
-  driver?: string;
-  requestor?: string;
-  items: Item[];
-}
+export type PdfInput =
+  | {
+      docType: "billing" | "quotation";
+      date: string; // e.g. "14 June 2026"
+      billedTo?: string;
+      unit: string;
+      driver?: string;
+      requestor?: string;
+      items: Item[];
+    }
+  | {
+      docType: "acknowledgement";
+      date: string;
+      refNo: string;
+      amount: number;
+      details: string;
+      receivedBy: string;
+      dateReceived: string;
+    };
 
 let britannicBoldBase64: Promise<string> | undefined;
-let billingSignature: Promise<{ data: string; format: "JPEG" | "PNG" } | undefined> | undefined;
+let sharedSignature: Promise<{ data: string; format: "JPEG" | "PNG" } | undefined> | undefined;
 
 function arrayBufferToBase64(data: ArrayBuffer): string {
   let binary = "";
@@ -45,8 +58,8 @@ function loadBritannicBold(): Promise<string> {
   return britannicBoldBase64;
 }
 
-function loadBillingSignature(): Promise<{ data: string; format: "JPEG" | "PNG" } | undefined> {
-  billingSignature ??= !signatureUrl
+function loadSharedSignature(): Promise<{ data: string; format: "JPEG" | "PNG" } | undefined> {
+  sharedSignature ??= !signatureUrl
     ? Promise.resolve(undefined)
     : fetch(signatureUrl)
         .then(async (response) => {
@@ -58,11 +71,128 @@ function loadBillingSignature(): Promise<{ data: string; format: "JPEG" | "PNG" 
           } as const;
         })
         .catch(() => undefined);
-  return billingSignature;
+  return sharedSignature;
 }
 
 const money = (n: number) =>
   "PHP " + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function sentenceCase(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  return trimmed[0].toUpperCase() + trimmed.slice(1);
+}
+
+function amountInWords(value: number): string {
+  const units = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+  const teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+  const tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+
+  const belowThousand = (n: number): string => {
+    const pieces: string[] = [];
+    const hundreds = Math.floor(n / 100);
+    const remainder = n % 100;
+    if (hundreds) pieces.push(`${units[hundreds]} hundred`);
+    if (remainder >= 20) {
+      pieces.push(tens[Math.floor(remainder / 10)]);
+      if (remainder % 10) pieces.push(units[remainder % 10]);
+    } else if (remainder >= 10) {
+      pieces.push(teens[remainder - 10]);
+    } else if (remainder > 0 || !pieces.length) {
+      pieces.push(units[remainder]);
+    }
+    return pieces.join(" ");
+  };
+
+  const rounded = Math.max(0, Math.round(value * 100)) / 100;
+  const whole = Math.floor(rounded);
+  const cents = Math.round((rounded - whole) * 100);
+  const pieces: string[] = [];
+
+  const billions = Math.floor(whole / 1_000_000_000);
+  const millions = Math.floor((whole % 1_000_000_000) / 1_000_000);
+  const thousands = Math.floor((whole % 1_000_000) / 1_000);
+  const remainder = whole % 1_000;
+
+  if (billions) pieces.push(`${belowThousand(billions)} billion`);
+  if (millions) pieces.push(`${belowThousand(millions)} million`);
+  if (thousands) pieces.push(`${belowThousand(thousands)} thousand`);
+  if (remainder || !pieces.length) pieces.push(belowThousand(remainder));
+
+  const base = sentenceCase(pieces.join(" "));
+  return cents ? `${base} pesos and ${String(cents).padStart(2, "0")}/100 only` : `${base} pesos only`;
+}
+
+function drawAcknowledgementReceipt(
+  doc: jsPDF,
+  input: Extract<PdfInput, { docType: "acknowledgement" }>,
+  signature: Awaited<ReturnType<typeof loadSharedSignature>>,
+) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 24;
+  const leftLabelX = 86;
+  const valueX = 180;
+  const lineWidth = 270;
+  const shortLineWidth = 150;
+  let y = 56;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1);
+  doc.rect(margin, margin, pageW - margin * 2, pageH - margin * 2, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Acknowledgment Receipt", pageW / 2, y, { align: "center" });
+
+  y = 96;
+  const drawField = (label: string, value: string, width: number = lineWidth) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(label, leftLabelX, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(value, valueX, y);
+    doc.line(valueX, y + 2, valueX + width, y + 2);
+    y += 22;
+  };
+
+  drawField("Date", input.date, shortLineWidth);
+  drawField("Ref No.", input.refNo, shortLineWidth);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Amount", leftLabelX, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(money(input.amount), valueX, y);
+  doc.line(valueX, y + 2, valueX + lineWidth, y + 2);
+  y += 22;
+  doc.text(amountInWords(input.amount), valueX, y);
+  doc.line(valueX, y + 2, valueX + lineWidth, y + 2);
+  y += 38;
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Details", leftLabelX, y);
+  doc.setFont("helvetica", "normal");
+  const detailLines = doc.splitTextToSize(input.details, lineWidth);
+  doc.text(detailLines, valueX, y);
+  doc.line(valueX, y + 2, valueX + lineWidth, y + 2);
+  y += Math.max(detailLines.length, 1) * 18 + 10;
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Received by:", leftLabelX, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(input.receivedBy, valueX, y);
+  doc.line(valueX, y + 2, valueX + 190, y + 2);
+  if (signature) {
+    doc.addImage(signature.data, signature.format, valueX + 10, y - 40, 110, 36);
+  }
+  y += 22;
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Date Received:", leftLabelX, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(input.dateReceived, valueX, y);
+  doc.line(valueX, y + 2, valueX + shortLineWidth, y + 2);
+}
 
 type DrawnQuoteCell = {
   pageNumber: number;
@@ -151,10 +281,15 @@ export async function generatePdf(input: PdfInput): Promise<jsPDF> {
 
   const [britannicBold, signature] = await Promise.all([
     loadBritannicBold(),
-    input.docType === "billing" ? loadBillingSignature() : Promise.resolve(undefined),
+    input.docType === "quotation" ? Promise.resolve(undefined) : loadSharedSignature(),
   ]);
   doc.addFileToVFS("Britannic Bold Regular.ttf", britannicBold);
   doc.addFont("Britannic Bold Regular.ttf", "Britannic Bold", "normal");
+
+  if (input.docType === "acknowledgement") {
+    drawAcknowledgementReceipt(doc, input, signature);
+    return doc;
+  }
 
   // Header — big bold title
   doc.setFont("Britannic Bold", "normal");

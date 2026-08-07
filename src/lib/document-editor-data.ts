@@ -7,6 +7,11 @@ export interface EditorInitial {
   driver?: string;
   requestor?: string;
   items?: Item[];
+  refNo?: string;
+  amount?: number;
+  details?: string;
+  receivedBy?: string;
+  dateReceived?: string;
 }
 
 function isItem(value: unknown): value is Item {
@@ -37,7 +42,7 @@ export function toEditorInitial(doc: DocRow): EditorInitial | null {
   if (!items) return null;
   const normalizedItems = items.map((item) => ({ ...item, unit: item.unit ?? doc.unit }));
 
-  return {
+  const initial: EditorInitial = {
     date: doc.doc_date,
     billedTo: doc.billed_to,
     unit: doc.unit,
@@ -45,4 +50,14 @@ export function toEditorInitial(doc: DocRow): EditorInitial | null {
     requestor: doc.requestor,
     items: normalizedItems,
   };
+
+  if (doc.doc_type === "acknowledgement") {
+    initial.refNo = doc.ack_ref_no;
+    initial.amount = doc.ack_amount;
+    initial.details = doc.ack_details;
+    initial.receivedBy = doc.ack_received_by;
+    initial.dateReceived = doc.ack_date_received;
+  }
+
+  return initial;
 }

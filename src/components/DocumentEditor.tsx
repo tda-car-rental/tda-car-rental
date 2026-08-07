@@ -32,6 +32,12 @@ function documentUnitSummary(items: Item[]): string {
   return firstUnit && items.every((item) => item.unit === firstUnit) ? firstUnit : "Multiple units";
 }
 
+function documentLabel(docType: DocType): string {
+  if (docType === "billing") return "Billing";
+  if (docType === "quotation") return "Quotation";
+  return "Acknowledgement Receipt";
+}
+
 export function DocumentEditor({
   docType,
   documentId,
@@ -43,17 +49,23 @@ export function DocumentEditor({
   initial?: EditorInitial;
   onSaved?: () => void;
 }) {
+  const isAcknowledgement = docType === "acknowledgement";
   const [date, setDate] = useState(initial?.date ?? todayLong());
   const [billedTo, setBilledTo] = useState(initial?.billedTo ?? "");
   const [driver, setDriver] = useState(initial?.driver ?? "Teddy Dimate");
   const [requestor, setRequestor] = useState(initial?.requestor ?? "");
-  const initialItems = initial?.items ?? [emptyItem()];
+  const [refNo, setRefNo] = useState(initial?.refNo ?? "");
+  const [amount, setAmount] = useState(String(initial?.amount ?? ""));
+  const [details, setDetails] = useState(initial?.details ?? "");
+  const [receivedBy, setReceivedBy] = useState(initial?.receivedBy ?? "");
+  const [dateReceived, setDateReceived] = useState(initial?.dateReceived ?? todayLong());
+  const initialItems = isAcknowledgement ? [] : initial?.items ?? [emptyItem()];
   const [items, setItems] = useState<Item[]>(initialItems);
-  const [samePassenger, setSamePassenger] = useState(rowsShare(initialItems, "passenger"));
-  const [sameUnit, setSameUnit] = useState(rowsShare(initialItems, "unit"));
+  const [samePassenger, setSamePassenger] = useState(isAcknowledgement ? false : rowsShare(initialItems, "passenger"));
+  const [sameUnit, setSameUnit] = useState(isAcknowledgement ? false : rowsShare(initialItems, "unit"));
   const [isSaving, setIsSaving] = useState(false);
 
-  const total = items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const total = isAcknowledgement ? Number(amount) || 0 : items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
   const setItem = (idx: number, patch: Partial<Item>) =>
     setItems((previous) => {
       let next = previous.map((item, index) => (index === idx ? { ...item, ...patch } : item));
@@ -82,6 +94,18 @@ export function DocumentEditor({
 
   const buildInput = () => {
     const normalizedItems = items.map((item) => ({ ...item, amount: Number(item.amount) || 0 }));
+    if (isAcknowledgement) {
+      return {
+        docType,
+        date,
+        refNo,
+        amount: Number(amount) || 0,
+        details,
+        receivedBy,
+        dateReceived,
+      };
+    }
+
     return {
       docType,
       date,
@@ -96,7 +120,7 @@ export function DocumentEditor({
   const preview = async () => {
     const previewWindow = window.open("", "_blank");
     const pdf = await generatePdf(buildInput());
-    const url = pdf.output("bloburl");
+    const url = String(pdf.output("bloburl"));
     if (previewWindow) {
       previewWindow.location.href = url;
     } else {
@@ -110,17 +134,38 @@ export function DocumentEditor({
   const save = async () => {
     setIsSaving(true);
     try {
-      const input = buildInput();
-      const draft = {
-        doc_type: docType,
-        doc_date: date,
-        billed_to: billedTo,
-        unit: input.unit,
-        driver,
-        requestor: input.requestor,
-        total,
-        items_json: JSON.stringify(input.items),
-      };
+      const normalizedItems = items.map((item) => ({ ...item, amount: Number(item.amount) || 0 }));
+      const draft = isAcknowledgement
+        ? {
+            doc_type: docType,
+            doc_date: date,
+            billed_to: "",
+            unit: "",
+            driver: "",
+            requestor: "",
+            total: Number(amount) || 0,
+            items_json: JSON.stringify([]),
+            ack_ref_no: refNo,
+            ack_amount: Number(amount) || 0,
+            ack_details: details,
+            ack_received_by: receivedBy,
+            ack_date_received: dateReceived,
+          }
+        : {
+            doc_type: docType,
+            doc_date: date,
+            billed_to: billedTo,
+            unit: documentUnitSummary(normalizedItems),
+            driver,
+            requestor: docType === "quotation" ? requestor : "",
+            total,
+            items_json: JSON.stringify(normalizedItems),
+            ack_ref_no: "",
+            ack_amount: 0,
+            ack_details: "",
+            ack_received_by: "",
+            ack_date_received: "",
+          };
       const savedId = documentId === undefined ? await saveDoc(draft) : documentId;
       if (documentId !== undefined) {
         await updateDoc(documentId, draft);
@@ -129,7 +174,7 @@ export function DocumentEditor({
       if (!savedDoc || savedDoc.doc_type !== docType) {
         throw new Error("We couldn't confirm the document was saved to the desktop database.");
       }
-      toast.success(`${docType === "billing" ? "Billing" : "Quotation"} saved.`);
+      toast.success(`${documentLabel(docType)} saved.`);
       onSaved?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Save failed. Please try again.";
@@ -150,32 +195,73 @@ export function DocumentEditor({
             ariaLabel="Document date"
           />
         </Field>
-        {docType === "billing" ? (
+        {isAcknowledgement ? (
           <>
-            <Field label="Billed To">
-              <input
-                className="input"
-                value={billedTo}
-                onChange={(e) => setBilledTo(e.target.value)}
-                placeholder="Path Foundation"
+            <Field label="Ref No.">
+              <input className="input" value={refNo} onChange={(e) => setRefNo(e.target.value)} />
+            </Field>
+            <Field label="Date Received">
+              <DatePicker
+                value={dateReceived}
+                onChange={setDateReceived}
+                format="d MMMM yyyy"
+                ariaLabel="Date received"
               />
             </Field>
-            <Field label="Driver">
-              <input className="input" value={driver} onChange={(e) => setDriver(e.target.value)} />
+            <Field label="Amount">
+              <input
+                className="input"
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
             </Field>
+            <Field label="Received by">
+              <input className="input" value={receivedBy} onChange={(e) => setReceivedBy(e.target.value)} />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Details">
+                <textarea
+                  className="input min-h-28"
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  placeholder="Easy Park office to Park Inn Hotel, Clark"
+                />
+              </Field>
+            </div>
           </>
         ) : (
-          <Field label="Requestor">
-            <input
-              className="input"
-              value={requestor}
-              onChange={(e) => setRequestor(e.target.value)}
-              placeholder="Path Foundation"
-            />
-          </Field>
+          <>
+            {docType === "billing" ? (
+              <>
+                <Field label="Billed To">
+                  <input
+                    className="input"
+                    value={billedTo}
+                    onChange={(e) => setBilledTo(e.target.value)}
+                    placeholder="Path Foundation"
+                  />
+                </Field>
+                <Field label="Driver">
+                  <input className="input" value={driver} onChange={(e) => setDriver(e.target.value)} />
+                </Field>
+              </>
+            ) : (
+              <Field label="Requestor">
+                <input
+                  className="input"
+                  value={requestor}
+                  onChange={(e) => setRequestor(e.target.value)}
+                  placeholder="Path Foundation"
+                />
+              </Field>
+            )}
+          </>
         )}
       </div>
 
+      {!isAcknowledgement && (
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-4">
@@ -284,6 +370,7 @@ export function DocumentEditor({
           </span>
         </div>
       </div>
+      )}
 
       <div className="sticky bottom-0 z-10 -mx-2 flex flex-wrap gap-2 border-t bg-background/95 px-2 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/75">
         <button onClick={() => void preview()} className="btn-primary" disabled={isSaving}>

@@ -19,12 +19,13 @@ export function DocumentEditorPage({
     documentId === undefined ? "ready" : "loading",
   );
   const [initial, setInitial] = useState<EditorInitial | undefined>();
-  const label = docType === "billing" ? "Billing" : "Quotation";
+  const label = docType === "billing" ? "Billing" : docType === "quotation" ? "Quotation" : "Acknowledgement Receipt";
   const title = `${documentId === undefined ? "Create" : "Edit"} ${label}`;
 
   const returnToList = () => {
     if (docType === "billing") navigate({ to: "/billing" });
-    else navigate({ to: "/quotation" });
+    else if (docType === "quotation") navigate({ to: "/quotation" });
+    else navigate({ to: "/acknowledgement-receipts" });
   };
 
   useEffect(() => {

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 type DocumentInput = {
-  doc_type: "billing" | "quotation";
+  doc_type: "billing" | "quotation" | "acknowledgement";
   doc_date: string;
   billed_to: string;
   unit: string;
@@ -13,6 +13,11 @@ type DocumentInput = {
   requestor: string;
   total: number;
   items_json: string;
+  ack_ref_no: string;
+  ack_amount: number;
+  ack_details: string;
+  ack_received_by: string;
+  ack_date_received: string;
 };
 
 type DatabaseContract = {
@@ -40,6 +45,11 @@ const documentInput: DocumentInput = {
   items_json: JSON.stringify([
     { date: "2026-07-26", unit: "Toyota HiAce", destination: "Subic", passenger: "A. Cruz", amount: 1200 },
   ]),
+  ack_ref_no: "",
+  ack_amount: 0,
+  ack_details: "",
+  ack_received_by: "",
+  ack_date_received: "",
 };
 
 function temporaryDatabaseFile() {
@@ -80,5 +90,34 @@ describe("DocumentDatabase", () => {
     reopened.delete(id);
     expect(reopened.list()).toEqual([]);
     reopened.close();
+  });
+
+  it("persists acknowledgement receipt data", async () => {
+    const module = await loadDatabaseModule();
+    if (!module) return;
+
+    const file = temporaryDatabaseFile();
+    const database = new module.DocumentDatabase(file);
+    const id = database.save({
+      ...documentInput,
+      doc_type: "acknowledgement",
+      doc_date: "26-Jul-26",
+      total: 5000,
+      ack_ref_no: "004",
+      ack_amount: 5000,
+      ack_details: "July 25, 2026 Easy Park office to Park Inn Hotel, Clark",
+      ack_received_by: "Easy Park Office - SBFZ",
+      ack_date_received: "26-Jul-26",
+    });
+
+    expect(database.get(id)).toMatchObject({
+      id,
+      doc_type: "acknowledgement",
+      ack_ref_no: "004",
+      ack_amount: 5000,
+      ack_received_by: "Easy Park Office - SBFZ",
+    });
+
+    database.close();
   });
 });
