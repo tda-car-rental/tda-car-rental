@@ -12,6 +12,11 @@ const documentInput = {
   requestor: "",
   total: 1200,
   items_json: "[]",
+  ack_ref_no: "",
+  ack_amount: 0,
+  ack_details: "",
+  ack_received_by: "",
+  ack_date_received: "",
 };
 
 describe("registerIpcHandlers", () => {
@@ -31,7 +36,9 @@ describe("registerIpcHandlers", () => {
       delete: vi.fn(),
       importLegacyFile: vi.fn(() => 2),
     };
-    const scanChromiumProfiles = vi.fn(async () => [{ source: "Chrome", importedCount: 1, message: "Imported 1 document(s)." }]);
+    const scanChromiumProfiles = vi.fn(async () => [
+      { source: "Chrome", importedCount: 1, message: "Imported 1 document(s)." },
+    ]);
     const dialog = {
       showOpenDialog: vi.fn(async () => ({ canceled: true, filePaths: [] })),
       showSaveDialog: vi.fn(async () => ({ canceled: true, filePath: undefined })),
@@ -60,9 +67,14 @@ describe("registerIpcHandlers", () => {
     await handlers.get("migration:scan")?.({});
     expect(scanChromiumProfiles).toHaveBeenCalledWith("C:/Users/Example/AppData/Local", database);
     await expect(
-      handlers.get("files:save-pdf")?.({}, { defaultFileName: "contract-signed.pdf", bytes: new Uint8Array([1, 2, 3]) }),
+      handlers.get("files:save-pdf")?.(
+        {},
+        { defaultFileName: "contract-signed.pdf", bytes: new Uint8Array([1, 2, 3]) },
+      ),
     ).resolves.toEqual({ canceled: true });
-    await expect(handlers.get("migration:import-file")?.({})).resolves.toMatchObject({ importedCount: 0 });
+    await expect(handlers.get("migration:import-file")?.({})).resolves.toMatchObject({
+      importedCount: 0,
+    });
     expect(database.importLegacyFile).not.toHaveBeenCalled();
   });
 });

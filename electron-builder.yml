@@ -23,3 +23,4 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   packElevateHelper: false
+  deleteAppData: false
