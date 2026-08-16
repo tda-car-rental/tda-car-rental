@@ -20,6 +20,12 @@ function staticPath(name: string) {
     : join(currentDir, "../src/electron/static", name);
 }
 
+function appIconPath() {
+  return app.isPackaged
+    ? join(process.resourcesPath, "electron-static", "logo.png")
+    : join(currentDir, "../src/electron/static/logo.png");
+}
+
 function serverUrl() {
   return process.env.TDA_ELECTRON_DEV_URL ?? `http://127.0.0.1:${startupPort}`;
 }
@@ -62,6 +68,7 @@ async function createWindow() {
     width: 1280,
     height: 860,
     show: false,
+    icon: appIconPath(),
     webPreferences: {
       preload: join(currentDir, "preload.cjs"),
       nodeIntegration: false,
@@ -80,6 +87,7 @@ async function createMigrationWindow(parent: BrowserWindow) {
     width: 680,
     height: 520,
     parent,
+    icon: appIconPath(),
     webPreferences: {
       preload: join(currentDir, "preload.cjs"),
       nodeIntegration: false,
