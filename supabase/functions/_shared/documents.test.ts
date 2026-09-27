@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { deleteEncryptedDocument, listEncryptedDocuments } from "./documents.ts";
+import { deleteEncryptedDocument, getEncryptedDocument, listEncryptedDocuments } from "./documents.ts";
 
 test("listEncryptedDocuments selects ciphertext metadata and caps pages at 250", async () => {
   const calls: string[] = [];
@@ -51,4 +51,26 @@ test("deleteEncryptedDocument uses a revision guard and soft-deletes the row", a
   assert.equal(result, row);
   assert.match(calls[0], /deleted_at/);
   assert.ok(calls.includes("eq:revision=4"));
+});
+
+test("getEncryptedDocument scopes reads to the workspace and excludes deleted rows", async () => {
+  const calls: string[] = [];
+  const row = { id: "doc-1", workspace_id: "workspace-1", deleted_at: null };
+  const client = {
+    from() {
+      const builder = {
+        select(columns: string) { calls.push(`select:${columns}`); return builder; },
+        eq(column: string, value: unknown) { calls.push(`eq:${column}=${String(value)}`); return builder; },
+        is(column: string, value: unknown) { calls.push(`is:${column}=${String(value)}`); return builder; },
+        async maybeSingle() { return { data: row, error: null }; },
+      };
+      return builder;
+    },
+  };
+
+  await getEncryptedDocument(client, { workspaceId: "workspace-1", id: "doc-1" });
+  assert.ok(calls.includes("eq:workspace_id=workspace-1"));
+  assert.ok(calls.includes("eq:id=doc-1"));
+  assert.ok(calls.includes("is:deleted_at=null"));
+  assert.match(calls[0], /encrypted_payload/);
 });
