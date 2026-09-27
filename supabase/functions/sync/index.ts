@@ -1,9 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { decodeKeyMaterial } from "../_shared/crypto.ts";
+import { handleOptions } from "../_shared/http.ts";
 import { createDocumentsHandler } from "../documents/handler.ts";
 import { createSyncHandler } from "./handler.ts";
 
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") return handleOptions(request);
   const authorization = request.headers.get("authorization") ?? "";
   const client = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
     global: { headers: { Authorization: authorization } },
