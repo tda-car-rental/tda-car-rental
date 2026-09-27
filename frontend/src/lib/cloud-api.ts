@@ -59,7 +59,8 @@ export function createCloudApi(options: CloudApiOptions) {
       return request<DocumentPage>(`documents?${params.toString()}`, {}, input.workspaceId);
     },
     getDocument(workspaceId: string, id: string): Promise<{ document: CloudDocument }> {
-      return request<{ document: CloudDocument }>(`documents/${encodeURIComponent(id)}`, {}, workspaceId);
+      const params = new URLSearchParams({ documentId: id });
+      return request<{ document: CloudDocument }>(`documents?${params.toString()}`, {}, workspaceId);
     },
     saveDocument(workspaceId: string, body: Record<string, unknown>): Promise<{ document: CloudDocument }> {
       return request<{ document: CloudDocument }>("documents", { method: "POST", body: JSON.stringify(body) }, workspaceId);

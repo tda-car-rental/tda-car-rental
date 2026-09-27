@@ -118,6 +118,23 @@ export async function createEncryptedDocument(
   return result.data;
 }
 
+export async function getEncryptedDocument(
+  client: RepositoryClient,
+  input: { workspaceId: string; id: string },
+): Promise<EncryptedDocumentRow> {
+  const query = client
+    .from("documents")
+    .select(SELECT_COLUMNS)
+    .eq("workspace_id", input.workspaceId)
+    .eq("id", input.id)
+    .is("deleted_at", null);
+  if (!query.maybeSingle) throw new Error("Document client does not support single-row reads.");
+  const result = await query.maybeSingle();
+  if (result.error) throw result.error;
+  if (!result.data) throw new Error("Document was not found.");
+  return result.data;
+}
+
 export async function updateEncryptedDocument(
   client: RepositoryClient,
   input: EncryptedMutationInput & { id: string; expectedRevision: number },

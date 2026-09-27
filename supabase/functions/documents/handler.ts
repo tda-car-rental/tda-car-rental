@@ -3,6 +3,7 @@ import { requireUser, requireWorkspaceMember, type AuthClient, type WorkspaceCli
 import {
   createEncryptedDocument,
   deleteEncryptedDocument,
+  getEncryptedDocument,
   listEncryptedDocuments,
   updateEncryptedDocument,
   type EncryptedDocumentRow,
@@ -93,6 +94,12 @@ export function createDocumentsHandler(deps: HandlerDependencies) {
 
       if (request.method === "GET") {
         const url = new URL(request.url);
+        const documentId = url.searchParams.get("documentId")?.trim();
+        if (documentId) {
+          const row = await getEncryptedDocument(deps.dbClient, { workspaceId: membership.workspaceId, id: documentId });
+          await audit(deps.dbClient, membership.workspaceId, "read", "accepted", row.id);
+          return jsonResponse({ document: await publicDocument(row, deps.keyMaterial) }, request);
+        }
         const kind = url.searchParams.get("kind") as EncryptedDocumentRow["document_kind"] | null;
         const page = await listEncryptedDocuments(deps.dbClient, {
           workspaceId: membership.workspaceId,
