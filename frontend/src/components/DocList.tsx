@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Download, Eye, Plus, Trash2 } from "lucide-react";
 import { deleteDoc, listDocs, type DocRow, type DocType, type Item } from "@/lib/db";
 import { generatePdf } from "@/lib/pdf";
+import { VirtualizedTableBody } from "@/components/VirtualizedTableBody";
 
 export function DocList({ docType }: { docType: DocType }) {
   const [docs, setDocs] = useState<DocRow[]>([]);
@@ -126,8 +127,11 @@ export function DocList({ docType }: { docType: DocType }) {
                 <th className="w-32 p-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {docs.map((doc) => (
+            <VirtualizedTableBody
+              items={docs}
+              rowHeight={56}
+              viewportHeight={512}
+              renderRow={(doc) => (
                 <tr
                   key={doc.id}
                   className="cursor-pointer border-t hover:bg-muted/40"
@@ -171,8 +175,8 @@ export function DocList({ docType }: { docType: DocType }) {
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
+              )}
+            />
           </table>
         )}
       </div>
