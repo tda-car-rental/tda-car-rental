@@ -24,7 +24,7 @@ export function WorkspaceContextProvider({ value, children }: { value: Workspace
   return <workspaceContext.Provider value={value}>{children}</workspaceContext.Provider>;
 }
 
-export function AuthGate({ auth, api, onWorkspaceReady, children }: { auth: AuthLike; api: ApiLike; onWorkspaceReady?: (context: WorkspaceContext) => void; children: ReactNode }) {
+export function AuthGate({ auth, api, getCachedWorkspaceContext, onWorkspaceReady, children }: { auth: AuthLike; api: ApiLike; getCachedWorkspaceContext?: () => Promise<WorkspaceContext | null>; onWorkspaceReady?: (context: WorkspaceContext) => void; children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(auth.getState());
   const [context, setContext] = useState<WorkspaceContext>();
   const [contextError, setContextError] = useState<string>();
@@ -36,10 +36,23 @@ export function AuthGate({ auth, api, onWorkspaceReady, children }: { auth: Auth
   }, [auth]);
 
   useEffect(() => {
-    if (authState.status !== "signed-in") {
+    if (authState.status === "signed-out" || authState.status === "error") {
       setContext(undefined);
       setContextError(undefined);
       return;
+    }
+    if (authState.status === "offline-authenticated") {
+      let active = true;
+      const cachedContext = getCachedWorkspaceContext?.() ?? Promise.resolve(null);
+      void cachedContext.then((next) => {
+        if (!active) return;
+        if (!next) setContextError("Offline workspace access is unavailable.");
+        else {
+          setContext(next);
+          onWorkspaceReady?.(next);
+        }
+      });
+      return () => { active = false; };
     }
     let active = true;
     setContextError(undefined);
@@ -52,7 +65,7 @@ export function AuthGate({ auth, api, onWorkspaceReady, children }: { auth: Auth
       if (active) setContextError("Workspace access is unavailable.");
     });
     return () => { active = false; };
-  }, [api, authState.status, onWorkspaceReady]);
+  }, [api, authState.status, getCachedWorkspaceContext, onWorkspaceReady]);
 
   if (authState.status === "loading") {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading...</div>;
@@ -60,14 +73,11 @@ export function AuthGate({ auth, api, onWorkspaceReady, children }: { auth: Auth
   if (authState.status === "signed-out" || authState.status === "error") {
     return <LoginPage onSignIn={auth.signIn} error={authState.status === "error" ? authState.message : undefined} />;
   }
-  if (authState.status === "offline-authenticated") {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Offline workspace access is not available on this device.</div>;
-  }
   if (contextError) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-destructive">{contextError}</div>;
   }
   if (!context) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading workspace...</div>;
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">{authState.status === "offline-authenticated" ? "Opening offline workspace..." : "Loading workspace..."}</div>;
   }
   return <WorkspaceContextProvider value={context}>{children}</WorkspaceContextProvider>;
 }

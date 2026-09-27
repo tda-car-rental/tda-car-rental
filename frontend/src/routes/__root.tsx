@@ -16,10 +16,22 @@ import { createCloudApi } from "@/lib/cloud-api";
 import { createIndexedDbBlobStore } from "@/lib/browser-cache";
 import { createDeviceKeyProvider, createEncryptedLocalCache, createRawDeviceKeyProvider, type DeviceKeyProvider } from "@/lib/local-cache";
 import { createCloudDocumentStore } from "@/lib/document-store";
-import { configureDocumentStore } from "@/lib/document-runtime";
+import { clearDocumentStore, configureDocumentStore } from "@/lib/document-runtime";
 import type { WorkspaceContext } from "@/lib/cloud-types";
 
 import appCss from "../styles.css?url";
+
+const cachedContextKey = "tda.cached-workspace-context";
+
+function readCachedWorkspaceContext(): WorkspaceContext | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = JSON.parse(window.localStorage.getItem(cachedContextKey) ?? "null") as WorkspaceContext | null;
+    return value?.workspaceId && value.workspaceName && value.role ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 function NotFoundComponent() {
   return (
@@ -125,12 +137,17 @@ function RootComponent() {
     try {
       const config = getSupabaseConfig();
       const authClient = createSupabaseAuthClient(config);
-      const auth = createAuthController({ client: authClient });
+      let cleanupSensitiveState: () => void | Promise<void> = () => undefined;
+      const auth = createAuthController({
+        client: authClient,
+        hasCachedSession: async () => typeof window !== "undefined" && Object.keys(window.localStorage).some((key) => key.includes("auth-token")),
+        clearSensitiveState: () => cleanupSensitiveState(),
+      });
       const api = createCloudApi({
         baseUrl: `${config.url}/functions/v1`,
         getAccessToken: () => auth.getAccessToken(),
       });
-      return { auth, api };
+      return { auth, api, registerCleanup: (cleanup: () => void | Promise<void>) => { cleanupSensitiveState = cleanup; } };
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Cloud service configuration is unavailable." };
     }
@@ -138,6 +155,7 @@ function RootComponent() {
 
   const onWorkspaceReady = useCallback(async (context: WorkspaceContext) => {
     if (!runtime || "error" in runtime) return;
+    window.localStorage.setItem(cachedContextKey, JSON.stringify(context));
     let keyProvider: DeviceKeyProvider;
     if (typeof window !== "undefined" && window.tda?.deviceKey) {
       keyProvider = createRawDeviceKeyProvider(() => window.tda.deviceKey.get());
@@ -147,6 +165,12 @@ function RootComponent() {
     const blobStore = createIndexedDbBlobStore();
     const cache = createEncryptedLocalCache(blobStore, keyProvider);
     configureDocumentStore(createCloudDocumentStore({ api: runtime.api, workspaceId: context.workspaceId, cache }));
+    runtime.registerCleanup(async () => {
+      await cache.clear();
+      keyProvider.clear();
+      clearDocumentStore();
+      window.localStorage.removeItem(cachedContextKey);
+    });
   }, [runtime]);
 
   return (
@@ -156,7 +180,7 @@ function RootComponent() {
       ) : "error" in runtime ? (
         <div className="flex min-h-screen items-center justify-center text-sm text-destructive">{runtime.error}</div>
       ) : (
-        <AuthGate auth={runtime.auth} api={runtime.api} onWorkspaceReady={onWorkspaceReady}>
+        <AuthGate auth={runtime.auth} api={runtime.api} getCachedWorkspaceContext={async () => readCachedWorkspaceContext()} onWorkspaceReady={onWorkspaceReady}>
           <Outlet />
         </AuthGate>
       )}
