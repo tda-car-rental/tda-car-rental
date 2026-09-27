@@ -14,7 +14,11 @@ Set these Edge Function secrets in Supabase:
 Set these public frontend variables at build time:
 
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_ANON_KEY` or the current `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+The frontend Vite configuration loads the repository-root `.env` file for local
+development. Keep that file untracked; production deployments must provide the
+same public variables through their build environment.
 
 Never commit any of these values. Rotate the document key through a versioned key-rotation procedure; do not overwrite an existing migration or reinterpret ciphertext with a new key.
 

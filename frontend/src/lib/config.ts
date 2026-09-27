@@ -11,7 +11,9 @@ function requiredString(value: unknown): string | undefined {
 
 export function getSupabaseConfig(env: PublicEnv = import.meta.env as PublicEnv): SupabaseConfig {
   const url = requiredString(env.VITE_SUPABASE_URL);
-  const anonKey = requiredString(env.VITE_SUPABASE_ANON_KEY);
+  const anonKey =
+    requiredString(env.VITE_SUPABASE_ANON_KEY) ??
+    requiredString(env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
   if (!url || !anonKey) {
     throw new Error("Cloud service configuration is unavailable.");

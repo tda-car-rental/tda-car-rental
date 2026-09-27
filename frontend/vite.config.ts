@@ -5,6 +5,7 @@ import { nitro } from "nitro/vite";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig(({ mode }) => ({
+  envDir: "..",
   resolve: {
     tsconfigPaths: true,
   },
