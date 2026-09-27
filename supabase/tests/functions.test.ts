@@ -10,6 +10,14 @@ test("document and sync functions use caller-scoped clients, not the service rol
   }
 });
 
+test("browser preflight reaches functions that authenticate inside the handler", () => {
+  const source = readFileSync("supabase/config.toml", "utf8");
+  assert.match(source, /\[functions\.documents\][\s\S]*?verify_jwt = false/);
+  assert.match(source, /\[functions\.sync\][\s\S]*?verify_jwt = false/);
+  assert.match(source, /\[functions\.workspace-context\][\s\S]*?verify_jwt = false/);
+  assert.match(source, /\[functions\.members\][\s\S]*?verify_jwt = false/);
+});
+
 test("ciphertext document migration has no plaintext business columns", () => {
   const source = readFileSync("supabase/migrations/000003_09272026-2028_encrypted_documents.sql", "utf8");
   assert.doesNotMatch(source, /billed_to|items_json|ack_details|total/);

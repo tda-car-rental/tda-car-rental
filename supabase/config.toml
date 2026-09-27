@@ -17,13 +17,13 @@ enabled = false
 enabled = true
 
 [functions.documents]
-verify_jwt = true
+verify_jwt = false
 
 [functions.sync]
-verify_jwt = true
+verify_jwt = false
 
 [functions.workspace-context]
-verify_jwt = true
+verify_jwt = false
 
 [functions.members]
-verify_jwt = true
+verify_jwt = false
