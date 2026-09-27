@@ -75,7 +75,8 @@ export function createCloudApi(options: CloudApiOptions) {
       const params = new URLSearchParams();
       if (input.kind) params.set("kind", input.kind);
       if (input.months !== undefined) params.set("months", queryValue(input.months) ?? "");
-      return request<DocumentSummary>(`documents/summary?${params.toString()}`, {}, workspaceId);
+      params.set("summary", "1");
+      return request<DocumentSummary>(`documents?${params.toString()}`, {}, workspaceId);
     },
     sync(workspaceId: string, mutation: Record<string, unknown>): Promise<unknown> {
       return request("sync", { method: "POST", body: JSON.stringify({ mutations: [mutation] }) }, workspaceId);

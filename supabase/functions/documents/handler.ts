@@ -2,6 +2,7 @@ import { decryptJson, encryptJson, type CiphertextEnvelope } from "../_shared/cr
 import { requireUser, requireWorkspaceMember, type AuthClient, type WorkspaceClient } from "../_shared/auth.ts";
 import {
   createEncryptedDocument,
+  countEncryptedDocuments,
   deleteEncryptedDocument,
   getEncryptedDocument,
   listEncryptedDocuments,
@@ -94,6 +95,11 @@ export function createDocumentsHandler(deps: HandlerDependencies) {
 
       if (request.method === "GET") {
         const url = new URL(request.url);
+        if (url.searchParams.get("summary") === "1") {
+          const counts = await countEncryptedDocuments(deps.dbClient, membership.workspaceId);
+          await audit(deps.dbClient, membership.workspaceId, "read", "accepted");
+          return jsonResponse({ counts, monthlyTotals: [] }, request);
+        }
         const documentId = url.searchParams.get("documentId")?.trim();
         if (documentId) {
           const row = await getEncryptedDocument(deps.dbClient, { workspaceId: membership.workspaceId, id: documentId });

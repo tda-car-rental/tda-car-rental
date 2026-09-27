@@ -41,7 +41,7 @@ export function buildEncryptedDocumentValues(input: EncryptedMutationInput) {
 
 type QueryResult<T> = { data: T | null; error: unknown };
 export type QueryBuilder = {
-  select(columns: string): QueryBuilder;
+  select(columns: string, options?: { count?: "exact"; head?: boolean }): QueryBuilder;
   eq(column: string, value: unknown): QueryBuilder;
   is(column: string, value: unknown): QueryBuilder;
   order(column: string, options: { ascending: boolean }): QueryBuilder;
@@ -133,6 +133,25 @@ export async function getEncryptedDocument(
   if (result.error) throw result.error;
   if (!result.data) throw new Error("Document was not found.");
   return result.data;
+}
+
+export async function countEncryptedDocuments(
+  client: RepositoryClient,
+  workspaceId: string,
+): Promise<Record<EncryptedDocumentRow["document_kind"], number>> {
+  const kinds: EncryptedDocumentRow["document_kind"][] = ["billing", "quotation", "acknowledgement", "contract"];
+  const counts = await Promise.all(kinds.map(async (kind) => {
+    const query = client
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("document_kind", kind)
+      .is("deleted_at", null) as QueryBuilder & PromiseLike<{ count?: number | null; error: unknown }>;
+    const result = await query;
+    if (result.error) throw result.error;
+    return [kind, result.count ?? 0] as const;
+  }));
+  return Object.fromEntries(counts) as Record<EncryptedDocumentRow["document_kind"], number>;
 }
 
 export async function updateEncryptedDocument(
