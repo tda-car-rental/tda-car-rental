@@ -7,6 +7,7 @@ test("OPTIONS returns allowlisted CORS headers", () => {
   const response = handleOptions(new Request("https://edge.example", { method: "OPTIONS", headers: { Origin: "https://app.example" } }));
   assert.equal(response.status, 204);
   assert.equal(response.headers.get("access-control-allow-origin"), "https://app.example");
+  assert.match(response.headers.get("access-control-allow-headers") ?? "", /(^|, )x-workspace-id(,|$)/);
 });
 
 test("readJson rejects non-JSON and oversized requests", async () => {

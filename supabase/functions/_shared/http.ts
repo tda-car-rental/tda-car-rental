@@ -36,7 +36,7 @@ function configuredOrigins(): string[] {
 
 function corsHeaders(request: Request): Headers {
   const headers = new Headers({
-    "access-control-allow-headers": "authorization, apikey, content-type, x-client-mutation-id",
+    "access-control-allow-headers": "authorization, apikey, content-type, x-client-mutation-id, x-workspace-id",
     "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
     "cache-control": "no-store",
     vary: "Origin",
