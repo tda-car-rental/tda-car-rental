@@ -29,3 +29,26 @@ test("workspace context returns role capabilities only for an active member", as
     capabilities: { canManageMembers: false, canWriteContracts: false },
   });
 });
+
+test("workspace context discovers the signed-in user's active workspace", async () => {
+  const handler = createWorkspaceContextHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "user-1" } }, error: null }; } } },
+    dbClient: {
+      from(table: string) {
+        const builder = {
+          select() { return builder; },
+          eq() { return builder; },
+          async maybeSingle() {
+            return table === "workspace_members"
+              ? { data: { workspace_id: "workspace-1", role: "owner", active: true }, error: null }
+              : { data: { id: "workspace-1", name: "TDA Car Rental" }, error: null };
+          },
+        };
+        return builder;
+      },
+    },
+  });
+
+  const response = await handler(new Request("https://edge.example/context", { headers: { Authorization: "Bearer token" } }));
+  assert.equal(response.status, 200);
+});
