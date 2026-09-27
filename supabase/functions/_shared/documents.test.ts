@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { deleteEncryptedDocument, getEncryptedDocument, listEncryptedDocuments } from "./documents.ts";
+import { countEncryptedDocuments, deleteEncryptedDocument, getEncryptedDocument, listEncryptedDocuments } from "./documents.ts";
 
 test("listEncryptedDocuments selects ciphertext metadata and caps pages at 250", async () => {
   const calls: string[] = [];
@@ -73,4 +73,23 @@ test("getEncryptedDocument scopes reads to the workspace and excludes deleted ro
   assert.ok(calls.includes("eq:id=doc-1"));
   assert.ok(calls.includes("is:deleted_at=null"));
   assert.match(calls[0], /encrypted_payload/);
+});
+
+test("countEncryptedDocuments uses head counts without selecting ciphertext", async () => {
+  const selects: string[] = [];
+  const client = {
+    from() {
+      const builder = {
+        select(columns: string) { selects.push(columns); return builder; },
+        eq() { return builder; },
+        is() { return builder; },
+        then(resolve: (value: unknown) => void) { resolve({ count: 12, error: null }); },
+      };
+      return builder;
+    },
+  };
+
+  const result = await countEncryptedDocuments(client, "workspace-1");
+  assert.equal(result.billing, 12);
+  assert.equal(selects.every((columns) => columns === "id"), true);
 });

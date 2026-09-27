@@ -20,4 +20,13 @@ describe("cloud api", () => {
     await expect(api.getWorkspaceContext()).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
     await expect(api.getWorkspaceContext()).rejects.toBeInstanceOf(CloudApiError);
   });
+
+  it("requests summaries through the Edge Function boundary", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ counts: {}, monthlyTotals: [] }), { status: 200 }));
+    const api = createCloudApi({ baseUrl: "https://edge.example/functions/v1", getAccessToken: async () => "token", fetchImpl });
+
+    await api.getSummary("workspace-1", { months: 6 });
+
+    expect(fetchImpl).toHaveBeenCalledWith("https://edge.example/functions/v1/documents?months=6&summary=1", expect.anything());
+  });
 });
