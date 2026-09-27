@@ -40,7 +40,7 @@ export function buildEncryptedDocumentValues(input: EncryptedMutationInput) {
 }
 
 type QueryResult<T> = { data: T | null; error: unknown };
-type QueryBuilder = {
+export type QueryBuilder = {
   select(columns: string): QueryBuilder;
   eq(column: string, value: unknown): QueryBuilder;
   is(column: string, value: unknown): QueryBuilder;
@@ -52,7 +52,7 @@ type QueryBuilder = {
   maybeSingle?(): Promise<QueryResult<EncryptedDocumentRow>>;
 };
 
-type RepositoryClient = { from(table: string): QueryBuilder };
+export type RepositoryClient = { from(table: string): QueryBuilder };
 
 const SELECT_COLUMNS = [
   "id",
@@ -135,6 +135,27 @@ export async function updateEncryptedDocument(
       revision: input.expectedRevision + 1,
       updated_at: new Date().toISOString(),
     })
+    .eq("workspace_id", input.workspaceId)
+    .eq("id", input.id)
+    .eq("revision", input.expectedRevision)
+    .select(SELECT_COLUMNS)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  if (!result.data) {
+    const { RepositoryConflictError } = await import("./idempotency.ts");
+    throw new RepositoryConflictError();
+  }
+  return result.data;
+}
+
+export async function deleteEncryptedDocument(
+  client: RepositoryClient,
+  input: { workspaceId: string; id: string; expectedRevision: number; actorUserId: string },
+): Promise<EncryptedDocumentRow> {
+  const query = client.from("documents");
+  if (!query.update || !query.maybeSingle) throw new Error("Document client does not support writes.");
+  const result = await query
+    .update({ deleted_at: new Date().toISOString(), updated_by: input.actorUserId, revision: input.expectedRevision + 1 })
     .eq("workspace_id", input.workspaceId)
     .eq("id", input.id)
     .eq("revision", input.expectedRevision)
