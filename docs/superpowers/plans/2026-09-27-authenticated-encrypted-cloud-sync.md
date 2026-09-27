@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- All SQL migration files are immutable after creation. Never edit an existing `supabase/migrations/*.sql`; every correction is a new migration with a higher sequence number.
+- All SQL migration files are immutable after creation. Never edit an existing `supabase/migrations/*.sql`; every correction is a new migration with a higher sequence number. Every filename uses `NNNNNN_MMDDYYYY-HHmm_purpose.sql`, with the six-digit sequence, creation date, and 24-hour creation time in Asia/Manila.
 - The frontend must not issue database queries or import a database client. Renderer code may call Auth and Edge Function HTTP APIs only.
 - Billing, quotation, and acknowledgement business fields must never be stored as plaintext in Supabase Postgres, logs, audit events, or analytics.
 - AES-256-GCM uses a 32-byte Edge Function secret, a fresh random 12-byte IV for every write, authenticated ciphertext, and explicit key versions.
@@ -30,7 +30,7 @@
 ### Supabase backend
 
 - Create `supabase/config.toml` for local Edge Function configuration.
-- Create immutable SQL files under `supabase/migrations/000001_*.sql` through `supabase/migrations/000007_*.sql` for extensions, tenant tables, ciphertext documents, helper functions, RLS policies, grants, and indexes.
+- Create immutable SQL files under `supabase/migrations/NNNNNN_MMDDYYYY-HHmm_purpose.sql` for extensions, tenant tables, ciphertext documents, helper functions, RLS policies, grants, and indexes.
 - Create `supabase/functions/_shared/http.ts`, `auth.ts`, `crypto.ts`, `validation.ts`, `roles.ts`, `documents.ts`, and `errors.ts` for reusable Edge Function boundaries.
 - Create `supabase/functions/documents/index.ts`, `supabase/functions/sync/index.ts`, `supabase/functions/workspace-context/index.ts`, and `supabase/functions/members/index.ts` for the public function endpoints.
 - Create `supabase/tests/rls.sql`, `supabase/tests/functions.test.ts`, and `supabase/tests/performance.sql` for database, function, and performance verification.
@@ -76,7 +76,7 @@ Each task below is one implementation commit. Run the listed test/check before c
 
 **Files:** Create `scripts/verify-supabase-migrations.mjs`, `supabase/migrations/MIGRATION_POLICY.md`; modify root `package.json` only if a root script is required.
 
-- [ ] Implement a script that rejects edits to tracked existing migration files, rejects duplicate/non-increasing numeric prefixes, and permits only new append-only migration files.
+- [ ] Implement a script that enforces `^\\d{6}_\\d{8}-\\d{4}_[a-z0-9_]+\\.sql$`, rejects edits to tracked existing migration files, rejects duplicate/non-increasing numeric prefixes, and permits only new append-only migration files.
 - [ ] Make the local check compare the working tree against `HEAD`; make CI mode compare against the checked-out base ref.
 - [ ] Document that changing an existing `.sql` file is forbidden and that fixes require a new numbered migration.
 - [ ] Test the script with a temporary new migration name and a temporary modified tracked migration fixture without changing real migration files.
@@ -93,7 +93,7 @@ Each task below is one implementation commit. Run the listed test/check before c
 
 ### Task 5: Create immutable extension and enum migration
 
-**Files:** Create `supabase/migrations/000001_extensions_and_enums.sql`.
+**Files:** Create one new `supabase/migrations/NNNNNN_MMDDYYYY-HHmm_extensions_and_enums.sql` using the actual Asia/Manila creation timestamp.
 
 - [ ] Enable required UUID/crypto support and create `app_role` and `document_kind` enums with exact values `owner`, `administrator`, `bookkeeper`, `billing`, `quotation`, `acknowledgement`, and `contract`.
 - [ ] Add `COMMENT ON` statements that describe security intent without sensitive values.
@@ -102,7 +102,7 @@ Each task below is one implementation commit. Run the listed test/check before c
 
 ### Task 6: Create immutable tenant and membership migration
 
-**Files:** Create `supabase/migrations/000002_tenants_and_memberships.sql`.
+**Files:** Create one new `supabase/migrations/NNNNNN_MMDDYYYY-HHmm_tenants_and_memberships.sql` using the actual Asia/Manila creation timestamp.
 
 - [ ] Create `workspaces` and `workspace_members` with UUID keys, `auth.users` references, active status, timestamps, exact role check, and unique `(workspace_id, user_id)`.
 - [ ] Add constraints preventing null roles and inactive membership ambiguity.
@@ -111,7 +111,7 @@ Each task below is one implementation commit. Run the listed test/check before c
 
 ### Task 7: Create immutable ciphertext document migration
 
-**Files:** Create `supabase/migrations/000003_encrypted_documents.sql`.
+**Files:** Create one new `supabase/migrations/NNNNNN_MMDDYYYY-HHmm_encrypted_documents.sql` using the actual Asia/Manila creation timestamp.
 
 - [ ] Create `documents` with UUID, workspace ID, `document_kind`, `encrypted_iv`, `encrypted_payload`, key version, revision, mutation ID, audit timestamps, and soft-delete state.
 - [ ] Use `bytea` for IV and ciphertext, `smallint` for key version, `bigint` for revision, and checks for 12-byte IV and positive revision.
@@ -120,7 +120,7 @@ Each task below is one implementation commit. Run the listed test/check before c
 
 ### Task 8: Create immutable audit and sync-state migration
 
-**Files:** Create `supabase/migrations/000004_audit_and_sync_state.sql`.
+**Files:** Create one new `supabase/migrations/NNNNNN_MMDDYYYY-HHmm_audit_and_sync_state.sql` using the actual Asia/Manila creation timestamp.
 
 - [ ] Create `audit_events` without payload columns and `sync_devices` with device ID, user ID, workspace ID, cursor, last-seen time, and revocation state.
 - [ ] Add foreign keys, bounded action/result checks, and indexes for workspace/time and user/device lookup.
@@ -128,7 +128,7 @@ Each task below is one implementation commit. Run the listed test/check before c
 
 ### Task 9: Create immutable RLS helper-function migration
 
-**Files:** Create `supabase/migrations/000005_rls_helpers.sql`.
+**Files:** Create one new `supabase/migrations/NNNNNN_MMDDYYYY-HHmm_rls_helpers.sql` using the actual Asia/Manila creation timestamp.
 
 - [ ] Create fixed-search-path `SECURITY DEFINER` helpers for active membership, role lookup, document read, document write, and member administration.
 - [ ] Use `auth.uid()` and schema-qualified `public` references; return false on missing/inactive membership.
@@ -137,7 +137,7 @@ Each task below is one implementation commit. Run the listed test/check before c
 
 ### Task 10: Create immutable RLS policies and grants migration
 
-**Files:** Create `supabase/migrations/000006_rls_policies.sql`.
+**Files:** Create one new `supabase/migrations/NNNNNN_MMDDYYYY-HHmm_rls_policies.sql` using the actual Asia/Manila creation timestamp.
 
 - [ ] Enable and force RLS on every application table.
 - [ ] Add policies for workspace membership, documents, audit events, and sync devices matching the role matrix; Bookkeeper document writes are limited to financial kinds and contract reads are read-only.
@@ -146,7 +146,7 @@ Each task below is one implementation commit. Run the listed test/check before c
 
 ### Task 11: Add immutable query-performance indexes
 
-**Files:** Create `supabase/migrations/000007_document_query_indexes.sql`.
+**Files:** Create one new `supabase/migrations/NNNNNN_MMDDYYYY-HHmm_document_query_indexes.sql` using the actual Asia/Manila creation timestamp.
 
 - [ ] Add composite indexes for workspace/kind/updated-time/UUID keyset scans, active membership lookup, mutation idempotency, and dashboard aggregates.
 - [ ] Use partial indexes for non-deleted documents where that improves the query plan.
@@ -407,6 +407,6 @@ Each task below is one implementation commit. Run the listed test/check before c
 - Spec coverage: authentication, three roles, manual Owner provisioning, AES-256-GCM, ciphertext-only Postgres, strict RLS, Edge Functions, web/Electron/Android-compatible API, offline cache/outbox, conflicts, migration, logging, key versioning, performance, and verification each have explicit tasks.
 - Placeholder scan: the plan contains no unresolved placeholder or deferred implementation task. Root script placement is resolved by the exact verifier behavior in Task 3; no feature depends on an unspecified choice.
 - Type consistency: backend `document_kind`, `app_role`, revision, mutation ID, and key-version names are reused in Edge Functions and frontend cloud types. The frontend store calls bounded keyset APIs and never calls a database client.
-- Migration immutability: migrations are numbered through `000007`, each task ends with a commit, and Task 3/41 reject modifications to existing SQL files.
+- Migration immutability: migrations use the required sequence/date/time/purpose filename, each task ends with a commit, and Task 3/41 reject modifications to existing SQL files.
 - Performance: indexed keyset reads, server summaries, bounded pages, virtualized rows, seeded 100,000-row benchmarks, and blocking CI are all included without external infrastructure.
 - Existing behavior: current UI primitives, routes, PDF generation, Electron isolation, and legacy data import are preserved or explicitly adapted through the cloud migration path.
