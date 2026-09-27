@@ -7,22 +7,25 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-.worktrees/
-dist
-dist-ssr
-dist-electron
-release
-.output
-.vinxi
-.tanstack/**
-.nitro
-*.local
-signature/
+# Dependencies and generated application output
+/frontend/node_modules/
+/frontend/.worktrees/
+/frontend/dist/
+/frontend/dist-ssr/
+/frontend/dist-electron/
+/frontend/release/
+/frontend/.output/
+/frontend/.vinxi/
+/frontend/.tanstack/
+/frontend/.nitro/
+/frontend/signature/
+/frontend/.wrangler/
+/frontend/.dev.vars
 
-# Wrangler / Cloudflare
-.wrangler/
-.dev.vars
+# Root worktrees and generated files
+/.worktrees/
+/supabase/.branches/
+/supabase/.temp/
 
 # Editor directories and files
 .vscode/*
@@ -34,4 +37,3 @@ signature/
 *.njsproj
 *.sln
 *.sw?
-
