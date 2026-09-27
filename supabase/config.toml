@@ -1,0 +1,29 @@
+project_id = "tda-car-rental"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+
+[studio]
+enabled = false
+
+[inbucket]
+enabled = false
+
+[auth]
+enabled = true
+
+[functions.documents]
+verify_jwt = true
+
+[functions.sync]
+verify_jwt = true
+
+[functions.workspace-context]
+verify_jwt = true
+
+[functions.members]
+verify_jwt = true
