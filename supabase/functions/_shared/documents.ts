@@ -16,6 +16,29 @@ export type EncryptedDocumentRow = {
 
 export type DocumentCursor = { updatedAt: string; id: string };
 
+export type EncryptedMutationInput = {
+  workspaceId: string;
+  kind: EncryptedDocumentRow["document_kind"];
+  encryptedIv: string;
+  encryptedPayload: string;
+  keyVersion: number;
+  mutationId: string;
+  actorUserId: string;
+};
+
+export function buildEncryptedDocumentValues(input: EncryptedMutationInput) {
+  return {
+    workspace_id: input.workspaceId,
+    document_kind: input.kind,
+    encrypted_iv: input.encryptedIv,
+    encrypted_payload: input.encryptedPayload,
+    encryption_key_version: input.keyVersion,
+    client_mutation_id: input.mutationId,
+    created_by: input.actorUserId,
+    updated_by: input.actorUserId,
+  };
+}
+
 type QueryResult<T> = { data: T | null; error: unknown };
 type QueryBuilder = {
   select(columns: string): QueryBuilder;
@@ -24,6 +47,9 @@ type QueryBuilder = {
   order(column: string, options: { ascending: boolean }): QueryBuilder;
   or?(expression: string): QueryBuilder;
   limit(value: number): Promise<QueryResult<EncryptedDocumentRow[]>>;
+  insert?(values: Record<string, unknown>): QueryBuilder;
+  update?(values: Record<string, unknown>): QueryBuilder;
+  maybeSingle?(): Promise<QueryResult<EncryptedDocumentRow>>;
 };
 
 type RepositoryClient = { from(table: string): QueryBuilder };
@@ -78,6 +104,48 @@ export async function listEncryptedDocuments(
     rows: page,
     nextCursor: rows.length > limit && last ? { updatedAt: last.updated_at, id: last.id } : null,
   };
+}
+
+export async function createEncryptedDocument(
+  client: RepositoryClient,
+  input: EncryptedMutationInput,
+): Promise<EncryptedDocumentRow> {
+  const query = client.from("documents");
+  if (!query.insert || !query.maybeSingle) throw new Error("Document client does not support writes.");
+  const result = await query.insert(buildEncryptedDocumentValues(input)).select(SELECT_COLUMNS).maybeSingle();
+  if (result.error) throw result.error;
+  if (!result.data) throw new Error("Document create did not return a row.");
+  return result.data;
+}
+
+export async function updateEncryptedDocument(
+  client: RepositoryClient,
+  input: EncryptedMutationInput & { id: string; expectedRevision: number },
+): Promise<EncryptedDocumentRow> {
+  const query = client.from("documents");
+  if (!query.update || !query.maybeSingle) throw new Error("Document client does not support writes.");
+  const result = await query
+    .update({
+      document_kind: input.kind,
+      encrypted_iv: input.encryptedIv,
+      encrypted_payload: input.encryptedPayload,
+      encryption_key_version: input.keyVersion,
+      client_mutation_id: input.mutationId,
+      updated_by: input.actorUserId,
+      revision: input.expectedRevision + 1,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("workspace_id", input.workspaceId)
+    .eq("id", input.id)
+    .eq("revision", input.expectedRevision)
+    .select(SELECT_COLUMNS)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  if (!result.data) {
+    const { RepositoryConflictError } = await import("./idempotency.ts");
+    throw new RepositoryConflictError();
+  }
+  return result.data;
 }
 
 export { SELECT_COLUMNS };
