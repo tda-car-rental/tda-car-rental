@@ -83,6 +83,12 @@ export class DocumentDatabase {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    this.database.exec(`
+      CREATE TABLE IF NOT EXISTS device_key (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        protected_value TEXT NOT NULL
+      )
+    `);
 
     this.runner.run([
       {
@@ -166,6 +172,26 @@ export class DocumentDatabase {
 
   delete(id: number): void {
     this.database.prepare("DELETE FROM docs WHERE id = ?").run(id);
+  }
+
+  getDeviceKey(): string | null {
+    const row = this.database
+      .prepare("SELECT protected_value FROM device_key WHERE id = 1 LIMIT 1")
+      .get() as { protected_value?: string } | undefined;
+    return row?.protected_value ?? null;
+  }
+
+  setDeviceKey(protectedValue: string): void {
+    this.database
+      .prepare(
+        `INSERT INTO device_key (id, protected_value) VALUES (1, ?)
+         ON CONFLICT(id) DO UPDATE SET protected_value = excluded.protected_value`,
+      )
+      .run(protectedValue);
+  }
+
+  clearDeviceKey(): void {
+    this.database.prepare("DELETE FROM device_key WHERE id = 1").run();
   }
 
   importLegacyFile(file: string): number {

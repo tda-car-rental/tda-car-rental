@@ -23,6 +23,10 @@ export interface TdaElectronApi {
     scanChromium(): Promise<MigrationResult[]>;
     importFile(): Promise<MigrationResult>;
   };
+  deviceKey: {
+    get(): Promise<Uint8Array>;
+    clear(): Promise<void>;
+  };
   startup: {
     retry(): void;
     quit(): void;

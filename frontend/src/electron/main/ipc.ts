@@ -13,6 +13,10 @@ type DialogPort = Pick<Dialog, "showOpenDialog">;
 type SaveDialogPort = Pick<Dialog, "showSaveDialog">;
 
 type DocumentDatabasePort = Pick<DocumentDatabase, "save" | "get" | "update" | "list" | "delete" | "importLegacyFile">;
+type DeviceKeyStorePort = {
+  getOrCreate(): Promise<Uint8Array>;
+  clear(): void;
+};
 
 export const ipcChannels = [
   "documents:save",
@@ -27,6 +31,7 @@ export const ipcChannels = [
 
 export type IpcDependencies = {
   database: DocumentDatabasePort;
+  deviceKeyStore?: DeviceKeyStorePort;
   dialog: DialogPort & SaveDialogPort;
   ipcMain: IpcMainPort;
   localAppData: string;
@@ -84,7 +89,7 @@ function pdfSaveInput(value: unknown): { defaultFileName: string; bytes: Uint8Ar
   return { defaultFileName: input.defaultFileName, bytes: input.bytes };
 }
 
-export function registerIpcHandlers({ database, dialog, ipcMain, localAppData, scanChromiumProfiles }: IpcDependencies) {
+export function registerIpcHandlers({ database, deviceKeyStore, dialog, ipcMain, localAppData, scanChromiumProfiles }: IpcDependencies) {
   ipcMain.handle("documents:save", (_event, input) => database.save(documentInput(input)));
   ipcMain.handle("documents:get", (_event, id) => database.get(positiveInteger(id)) as StoredDocument | undefined);
   ipcMain.handle("documents:update", (_event, id, input) => database.update(positiveInteger(id), documentInput(input)));
@@ -113,4 +118,8 @@ export function registerIpcHandlers({ database, dialog, ipcMain, localAppData, s
     const importedCount = database.importLegacyFile(file);
     return { source: file, importedCount, message: `Imported ${importedCount} document(s).` };
   });
+  if (deviceKeyStore) {
+    ipcMain.handle("device-key:get", () => deviceKeyStore.getOrCreate());
+    ipcMain.handle("device-key:clear", () => deviceKeyStore.clear());
+  }
 }

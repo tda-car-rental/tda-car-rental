@@ -2,10 +2,11 @@ import { spawn } from "node:child_process";
 import { get } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, dialog, ipcMain, Menu } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage } from "electron";
 import { DocumentDatabase } from "./main/document-database.js";
 import { registerIpcHandlers } from "./main/ipc.js";
 import { scanChromiumProfiles } from "./main/legacy-migration.js";
+import { createProtectedDeviceKeyStore } from "./main/protected-device-key.js";
 import { ensurePersistentDocumentDatabase, resolveElectronUserDataPath } from "./main/storage-path.js";
 import { StartupController } from "./main/startup-controller.js";
 
@@ -100,8 +101,17 @@ async function createMigrationWindow(parent: BrowserWindow) {
 
 app.whenReady().then(async () => {
   const database = new DocumentDatabase(ensurePersistentDocumentDatabase({ appDataRoot: app.getPath("appData") }));
+  const deviceKeyStore = createProtectedDeviceKeyStore(
+    {
+      get: () => database.getDeviceKey(),
+      set: (value) => database.setDeviceKey(value),
+      clear: () => database.clearDeviceKey(),
+    },
+    safeStorage,
+  );
   registerIpcHandlers({
     database,
+    deviceKeyStore,
     dialog,
     ipcMain,
     localAppData: process.env.LOCALAPPDATA ?? app.getPath("userData"),
