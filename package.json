@@ -1,0 +1,13 @@
+{
+  "name": "tda-car-rental-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix frontend run dev --",
+    "dev:web": "npm --prefix frontend run dev:web --",
+    "test": "npm --prefix frontend run test --",
+    "lint": "npm --prefix frontend run lint --",
+    "build": "npm --prefix frontend run build --",
+    "build:electron": "npm --prefix frontend run build:electron --",
+    "dist:win": "npm --prefix frontend run dist:win --"
+  }
+}
