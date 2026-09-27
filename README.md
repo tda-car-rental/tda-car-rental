@@ -1,40 +1,28 @@
 # TDA Car Rental
 
-TDA Car Rental is a TanStack Start application for managing vehicle rental operations.
+The repository root contains the Supabase project, shared documentation, and the `frontend/` application.
 
-## Development
-
-Install dependencies and start the development server:
+## Application development
 
 ```sh
+cd frontend
 npm install
 npm run dev
 ```
 
-## Quality checks
+Run the frontend quality gates from `frontend/`:
 
 ```sh
-npm run test
+npm test
 npm run lint
 npm run build
+npm run build:electron
 ```
 
-## Electron development
+Supabase migrations and Edge Functions live under `supabase/`. Migration files are immutable and must use:
 
-```sh
-npm run electron:dev
+```text
+NNNNNN_MMDDYYYY-HHmm_purpose.sql
 ```
 
-## Windows installer
-
-```sh
-npm run dist:win
-```
-
-The packaged application stores documents in its Electron user-data SQLite
-database at `%APPDATA%/TDA Car Rental/tda-car-rental.sqlite`. If an older
-desktop build stored data at `%APPDATA%/tanstack_start_ts/tda-car-rental.sqlite`,
-the app moves that database into the branded folder on first launch. To bring
-forward documents from a previous browser-based version, use the desktop
-app's **Data > Migrate legacy data...** action and either search browser data
-or select a SQLite backup file.
+The timestamp is the creation time in Asia/Manila using 24-hour `HHmm`. Corrections are always new migrations with a higher sequence number.
