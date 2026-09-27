@@ -6,13 +6,13 @@ export type AuthenticatedUser = {
   email?: string;
 };
 
-type AuthClient = {
+export type AuthClient = {
   auth: {
     getUser(token: string): Promise<{ data: { user: { id: string; email?: string } | null }; error: unknown }>;
   };
 };
 
-type WorkspaceClient = {
+export type WorkspaceClient = {
   from(table: string): {
     select(columns: string): unknown;
   };
@@ -48,6 +48,19 @@ export async function requireWorkspaceMember(
   const workspaceQuery = query.eq("workspace_id", workspaceId) as typeof query;
   const userQuery = workspaceQuery.eq("user_id", userId) as typeof query;
   const result = await (userQuery.eq("active", true) as typeof query).maybeSingle();
+  if (result.error || !result.data?.active) throw new ApiError("FORBIDDEN", "Access denied.", 403);
+  return { workspaceId: result.data.workspace_id, role: result.data.role };
+}
+
+export async function requireAnyWorkspaceMember(
+  client: WorkspaceClient,
+  userId: string,
+): Promise<{ workspaceId: string; role: CloudRole }> {
+  const query = client.from("workspace_members").select("workspace_id, role, active") as {
+    eq(column: string, value: string | boolean): unknown;
+    maybeSingle(): Promise<{ data: { workspace_id: string; role: CloudRole; active: boolean } | null; error: unknown }>;
+  };
+  const result = await ((query.eq("user_id", userId) as typeof query).eq("active", true) as typeof query).maybeSingle();
   if (result.error || !result.data?.active) throw new ApiError("FORBIDDEN", "Access denied.", 403);
   return { workspaceId: result.data.workspace_id, role: result.data.role };
 }

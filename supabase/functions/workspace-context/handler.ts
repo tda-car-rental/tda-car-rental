@@ -1,4 +1,4 @@
-import { requireUser, requireWorkspaceMember, type AuthClient, type WorkspaceClient } from "../_shared/auth.ts";
+import { requireAnyWorkspaceMember, requireUser, requireWorkspaceMember, type AuthClient, type WorkspaceClient } from "../_shared/auth.ts";
 import { handleOptions, jsonResponse, ApiError } from "../_shared/http.ts";
 import { canManageMembers, canWriteDocument } from "../_shared/roles.ts";
 
@@ -9,7 +9,10 @@ export function createWorkspaceContextHandler(deps: ContextDependencies) {
     if (request.method === "OPTIONS") return handleOptions(request);
     try {
       const user = await requireUser(request, deps.authClient);
-      const member = await requireWorkspaceMember(deps.dbClient, request.headers.get("x-workspace-id") ?? "", user.id);
+      const requestedWorkspace = request.headers.get("x-workspace-id")?.trim();
+      const member = requestedWorkspace
+        ? await requireWorkspaceMember(deps.dbClient, requestedWorkspace, user.id)
+        : await requireAnyWorkspaceMember(deps.dbClient, user.id);
       const query = deps.dbClient.from("workspaces").select("id, name") as {
         eq(column: string, value: string): unknown;
         maybeSingle(): Promise<{ data: { id: string; name: string } | null; error: unknown }>;
