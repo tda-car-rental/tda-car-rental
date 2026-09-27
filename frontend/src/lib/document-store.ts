@@ -1,4 +1,4 @@
-import type { CloudApiError } from "./cloud-api";
+import { CloudApiError } from "./cloud-api";
 import type { CloudDocument, CloudDocumentInput } from "./cloud-types";
 import type { DocRow, DocumentInput } from "./db";
 import { createSyncEngine, type SyncQueueCache } from "./sync-engine";
@@ -12,6 +12,10 @@ type DocumentApi = {
 };
 
 const DOCUMENTS_KEY = "cached-documents";
+
+function mayUseOfflineCache(error: unknown): boolean {
+  return !(error instanceof CloudApiError) || error.status === 401 || error.status >= 500;
+}
 
 function toRow(document: CloudDocument): DocRow {
   return document as unknown as DocRow;
@@ -62,7 +66,7 @@ export function createCloudDocumentStore(options: {
         await cacheDocuments(page.documents);
         return page.documents.filter((document) => document.doc_type !== "contract").map(toRow);
       } catch (error) {
-        if ((error as CloudApiError)?.code === "UNAUTHENTICATED") throw error;
+        if (!mayUseOfflineCache(error)) throw error;
         return (await cached()).map(toRow);
       }
     },
@@ -72,7 +76,8 @@ export function createCloudDocumentStore(options: {
         const result = await options.api.getDocument(options.workspaceId, documentId);
         await merge(result.document);
         return toRow(result.document);
-      } catch {
+      } catch (error) {
+        if (!mayUseOfflineCache(error)) throw error;
         const document = (await cached()).find((item) => item.id === documentId);
         return document ? toRow(document) : undefined;
       }
@@ -83,7 +88,8 @@ export function createCloudDocumentStore(options: {
         const result = await options.api.saveDocument(options.workspaceId, { operation: "create", mutationId, document: toInput(input) });
         await merge(result.document);
         return result.document.id;
-      } catch {
+      } catch (error) {
+        if (!mayUseOfflineCache(error)) throw error;
         const document = optimisticDocument(input, crypto.randomUUID());
         await merge(document);
         await sync.enqueue({ operation: "create", mutationId, document: toInput(input) });
@@ -98,7 +104,8 @@ export function createCloudDocumentStore(options: {
           operation: "update", mutationId, id: String(id), expectedRevision: existing?.revision ?? 1, document: toInput(input),
         });
         await merge(result.document);
-      } catch {
+      } catch (error) {
+        if (!mayUseOfflineCache(error)) throw error;
         await sync.enqueue({ operation: "update", mutationId, id: String(id), expectedRevision: existing?.revision ?? 1, document: toInput(input) });
       }
     },
@@ -110,7 +117,8 @@ export function createCloudDocumentStore(options: {
           mutationId, id: String(id), expectedRevision: existing?.revision ?? 1,
         });
         await merge(result.document);
-      } catch {
+      } catch (error) {
+        if (!mayUseOfflineCache(error)) throw error;
         await sync.enqueue({ operation: "delete", mutationId, id: String(id), expectedRevision: existing?.revision ?? 1 });
       }
     },
