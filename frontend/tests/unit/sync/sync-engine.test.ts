@@ -4,7 +4,7 @@ import { createSyncEngine, type SyncQueueCache } from "@/lib/sync-engine";
 function createCache(): SyncQueueCache {
   let value: unknown = null;
   return {
-    get: vi.fn(async () => value),
+    get: async <T>(_key: string) => value as T | null,
     put: vi.fn(async (_key: string, next: unknown) => {
       value = next;
     }),

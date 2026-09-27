@@ -24,7 +24,7 @@ export function WorkspaceContextProvider({ value, children }: { value: Workspace
   return <workspaceContext.Provider value={value}>{children}</workspaceContext.Provider>;
 }
 
-export function AuthGate({ auth, api, children }: { auth: AuthLike; api: ApiLike; children: ReactNode }) {
+export function AuthGate({ auth, api, onWorkspaceReady, children }: { auth: AuthLike; api: ApiLike; onWorkspaceReady?: (context: WorkspaceContext) => void; children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(auth.getState());
   const [context, setContext] = useState<WorkspaceContext>();
   const [contextError, setContextError] = useState<string>();
@@ -44,12 +44,15 @@ export function AuthGate({ auth, api, children }: { auth: AuthLike; api: ApiLike
     let active = true;
     setContextError(undefined);
     void api.getWorkspaceContext().then((next) => {
-      if (active) setContext(next);
+      if (active) {
+        setContext(next);
+        onWorkspaceReady?.(next);
+      }
     }).catch(() => {
       if (active) setContextError("Workspace access is unavailable.");
     });
     return () => { active = false; };
-  }, [api, authState.status]);
+  }, [api, authState.status, onWorkspaceReady]);
 
   if (authState.status === "loading") {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading...</div>;

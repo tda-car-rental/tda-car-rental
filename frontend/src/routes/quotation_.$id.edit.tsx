@@ -7,5 +7,5 @@ export const Route = createFileRoute("/quotation_/$id/edit")({
 
 function QuotationEditPage() {
   const { id } = Route.useParams();
-  return <DocumentEditorPage docType="quotation" documentId={Number(id)} />;
+  return <DocumentEditorPage docType="quotation" documentId={id} />;
 }

@@ -19,6 +19,10 @@ type CacheEnvelope = {
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+function bufferSource(bytes: Uint8Array): ArrayBuffer {
+  return bytes.slice().buffer as ArrayBuffer;
+}
+
 function toBase64(bytes: Uint8Array): string {
   let value = "";
   for (const byte of bytes) value += String.fromCharCode(byte);
@@ -48,6 +52,22 @@ export function createDeviceKeyProvider(): DeviceKeyProvider {
   };
 }
 
+export function createRawDeviceKeyProvider(getBytes: () => Promise<Uint8Array>): DeviceKeyProvider {
+  let keyPromise: Promise<CryptoKey> | null = null;
+  return {
+    getKey() {
+      keyPromise ??= getBytes().then((bytes) => {
+        if (bytes.byteLength !== 32) throw new Error("Device key must be 256 bits.");
+        return crypto.subtle.importKey("raw", bufferSource(bytes), { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+      });
+      return keyPromise;
+    },
+    clear() {
+      keyPromise = null;
+    },
+  };
+}
+
 export function createEncryptedLocalCache(store: BlobStore, keyProvider: DeviceKeyProvider) {
   return {
     async get<T>(key: string): Promise<T | null> {
@@ -60,16 +80,16 @@ export function createEncryptedLocalCache(store: BlobStore, keyProvider: DeviceK
       }
 
       const plaintext = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: fromBase64(envelope.iv) },
+        { name: "AES-GCM", iv: bufferSource(fromBase64(envelope.iv)) },
         await keyProvider.getKey(),
-        fromBase64(envelope.ciphertext),
+        bufferSource(fromBase64(envelope.ciphertext)),
       );
       return JSON.parse(decoder.decode(plaintext)) as T;
     },
     async put<T>(key: string, value: T): Promise<void> {
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const ciphertext = await crypto.subtle.encrypt(
-        { name: "AES-GCM", iv },
+        { name: "AES-GCM", iv: bufferSource(iv) },
         await keyProvider.getKey(),
         encoder.encode(JSON.stringify(value)),
       );

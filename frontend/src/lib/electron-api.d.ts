@@ -23,7 +23,7 @@ export interface TdaElectronApi {
     scanChromium(): Promise<MigrationResult[]>;
     importFile(): Promise<MigrationResult>;
   };
-  deviceKey: {
+  deviceKey?: {
     get(): Promise<Uint8Array>;
     clear(): Promise<void>;
   };
@@ -39,4 +39,3 @@ declare global {
   }
 }
 
-export {};

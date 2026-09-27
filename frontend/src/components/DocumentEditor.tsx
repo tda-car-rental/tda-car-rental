@@ -45,7 +45,7 @@ export function DocumentEditor({
   onSaved,
 }: {
   docType: DocType;
-  documentId?: number;
+  documentId?: string | number;
   initial?: EditorInitial;
   onSaved?: () => void;
 }) {

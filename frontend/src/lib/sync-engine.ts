@@ -48,7 +48,7 @@ export function createSyncEngine(options: {
     async enqueue(mutation: Omit<QueuedMutation, "mutationId">): Promise<string> {
       const mutationId = createMutationId();
       const queue = await readQueue();
-      await writeQueue([...queue, { ...mutation, mutationId }]);
+      await writeQueue([...queue, { ...mutation, mutationId } as QueuedMutation]);
       return mutationId;
     },
     pending(): Promise<QueuedMutation[]> {

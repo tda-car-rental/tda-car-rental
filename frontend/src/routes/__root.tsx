@@ -7,8 +7,17 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthGate } from "@/components/auth/AuthGate";
+import { createSupabaseAuthClient, createAuthController } from "@/lib/auth";
+import { getSupabaseConfig } from "@/lib/config";
+import { createCloudApi } from "@/lib/cloud-api";
+import { createIndexedDbBlobStore } from "@/lib/browser-cache";
+import { createDeviceKeyProvider, createEncryptedLocalCache, createRawDeviceKeyProvider, type DeviceKeyProvider } from "@/lib/local-cache";
+import { createCloudDocumentStore } from "@/lib/document-store";
+import { configureDocumentStore } from "@/lib/document-runtime";
+import type { WorkspaceContext } from "@/lib/cloud-types";
 
 import appCss from "../styles.css?url";
 
@@ -111,11 +120,46 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const runtime = useMemo(() => {
+    if (import.meta.env.MODE === "test") return null;
+    try {
+      const config = getSupabaseConfig();
+      const authClient = createSupabaseAuthClient(config);
+      const auth = createAuthController({ client: authClient });
+      const api = createCloudApi({
+        baseUrl: `${config.url}/functions/v1`,
+        getAccessToken: () => auth.getAccessToken(),
+      });
+      return { auth, api };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Cloud service configuration is unavailable." };
+    }
+  }, []);
+
+  const onWorkspaceReady = useCallback(async (context: WorkspaceContext) => {
+    if (!runtime || "error" in runtime) return;
+    let keyProvider: DeviceKeyProvider;
+    if (typeof window !== "undefined" && window.tda?.deviceKey) {
+      keyProvider = createRawDeviceKeyProvider(() => window.tda.deviceKey.get());
+    } else {
+      keyProvider = createDeviceKeyProvider();
+    }
+    const blobStore = createIndexedDbBlobStore();
+    const cache = createEncryptedLocalCache(blobStore, keyProvider);
+    configureDocumentStore(createCloudDocumentStore({ api: runtime.api, workspaceId: context.workspaceId, cache }));
+  }, [runtime]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      {runtime === null ? (
+        <Outlet />
+      ) : "error" in runtime ? (
+        <div className="flex min-h-screen items-center justify-center text-sm text-destructive">{runtime.error}</div>
+      ) : (
+        <AuthGate auth={runtime.auth} api={runtime.api} onWorkspaceReady={onWorkspaceReady}>
+          <Outlet />
+        </AuthGate>
+      )}
       <Toaster />
     </QueryClientProvider>
   );

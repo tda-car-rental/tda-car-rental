@@ -17,7 +17,7 @@ describe("device key IPC", () => {
       deviceKeyStore,
       dialog: {
         showOpenDialog: vi.fn(async () => ({ canceled: true, filePaths: [] })),
-        showSaveDialog: vi.fn(async () => ({ canceled: true, filePath: undefined })),
+        showSaveDialog: vi.fn(async () => ({ canceled: true, filePath: "" })),
       },
       ipcMain: { handle: (channel, handler) => handlers.set(channel, handler) },
       localAppData: "C:/Users/Example/AppData/Local",

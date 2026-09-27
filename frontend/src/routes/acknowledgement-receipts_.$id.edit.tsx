@@ -7,5 +7,5 @@ export const Route = createFileRoute("/acknowledgement-receipts_/$id/edit")({
 
 function AcknowledgementEditPage() {
   const { id } = Route.useParams();
-  return <DocumentEditorPage docType="acknowledgement" documentId={Number(id)} />;
+  return <DocumentEditorPage docType="acknowledgement" documentId={id} />;
 }

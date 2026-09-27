@@ -7,5 +7,5 @@ export const Route = createFileRoute("/billing_/$id/edit")({
 
 function BillingEditPage() {
   const { id } = Route.useParams();
-  return <DocumentEditorPage docType="billing" documentId={Number(id)} />;
+  return <DocumentEditorPage docType="billing" documentId={id} />;
 }

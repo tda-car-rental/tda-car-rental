@@ -12,7 +12,7 @@ export function DocumentEditorPage({
   documentId,
 }: {
   docType: DocType;
-  documentId?: number;
+  documentId?: string | number;
 }) {
   const navigate = useNavigate();
   const [status, setStatus] = useState<EditorStatus>(

@@ -34,7 +34,7 @@ export function DocList({ docType }: { docType: DocType }) {
     else navigate({ to: "/acknowledgement-receipts/new" });
   };
 
-  const openEdit = (id: number) => {
+  const openEdit = (id: string | number) => {
     if (docType === "billing") {
       navigate({ to: "/billing/$id/edit", params: { id: String(id) } });
     } else if (docType === "quotation") {
@@ -44,7 +44,7 @@ export function DocList({ docType }: { docType: DocType }) {
     }
   };
 
-  const remove = async (id: number) => {
+  const remove = async (id: string | number) => {
     await deleteDoc(id);
     await refresh();
   };
@@ -88,7 +88,7 @@ export function DocList({ docType }: { docType: DocType }) {
   const previewDoc = async (doc: DocRow) => {
     const previewWindow = window.open("", "_blank");
     const pdf = await generatePdf(toPdfInput(doc));
-    const url = pdf.output("bloburl");
+    const url = String(pdf.output("bloburl"));
     if (previewWindow) {
       previewWindow.location.href = url;
     } else {

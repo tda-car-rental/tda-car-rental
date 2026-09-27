@@ -1,9 +1,9 @@
-import { electronApi } from "./electron-api";
+import { documentStore } from "./document-runtime";
 
 export type DocType = "billing" | "quotation" | "acknowledgement";
 
 export interface DocRow {
-  id: number;
+  id: string | number;
   doc_type: DocType;
   doc_date: string;
   billed_to: string;
@@ -18,6 +18,9 @@ export interface DocRow {
   ack_received_by: string;
   ack_date_received: string;
   created_at: string;
+  updated_at?: string;
+  revision?: number;
+  workspace_id?: string;
 }
 
 export interface Item {
@@ -28,24 +31,24 @@ export interface Item {
   amount: number;
 }
 
-export type DocumentInput = Omit<DocRow, "id" | "created_at">;
+export type DocumentInput = Omit<DocRow, "id" | "created_at" | "updated_at" | "revision" | "workspace_id">;
 
-export async function saveDoc(input: DocumentInput): Promise<number> {
-  return electronApi().documents.save(input);
+export async function saveDoc(input: DocumentInput): Promise<string | number> {
+  return documentStore().save(input);
 }
 
-export async function getDoc(id: number): Promise<DocRow | undefined> {
-  return electronApi().documents.get(id);
+export async function getDoc(id: string | number): Promise<DocRow | undefined> {
+  return documentStore().get(id);
 }
 
-export async function updateDoc(id: number, input: DocumentInput): Promise<void> {
-  await electronApi().documents.update(id, input);
+export async function updateDoc(id: string | number, input: DocumentInput): Promise<void> {
+  await documentStore().update(id, input);
 }
 
 export async function listDocs(): Promise<DocRow[]> {
-  return electronApi().documents.list();
+  return documentStore().list();
 }
 
-export async function deleteDoc(id: number): Promise<void> {
-  await electronApi().documents.delete(id);
+export async function deleteDoc(id: string | number): Promise<void> {
+  await documentStore().delete(id);
 }
