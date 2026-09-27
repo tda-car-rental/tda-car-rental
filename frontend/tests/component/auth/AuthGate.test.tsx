@@ -30,4 +30,24 @@ describe("AuthGate", () => {
     await waitFor(() => expect(screen.getByText("Application")).toBeInTheDocument());
     expect(api.getWorkspaceContext).toHaveBeenCalledOnce();
   });
+
+  it("opens cached workspace content after a previously authenticated session loses connectivity", async () => {
+    const auth = {
+      ...signedOutAuth(),
+      getState: () => ({ status: "offline-authenticated" as const }),
+    };
+    render(
+      <AuthGate
+        auth={auth}
+        api={{ getWorkspaceContext: vi.fn() }}
+        getCachedWorkspaceContext={async () => ({
+          workspaceId: "workspace-1", workspaceName: "TDA Car Rental", role: "bookkeeper",
+          capabilities: { canManageMembers: false, canWriteContracts: false },
+        })}
+      >
+        <div>Cached application</div>
+      </AuthGate>,
+    );
+    await waitFor(() => expect(screen.getByText("Cached application")).toBeInTheDocument());
+  });
 });
