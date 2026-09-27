@@ -20,6 +20,10 @@ export function useWorkspaceContext(): WorkspaceContext {
   return context;
 }
 
+export function WorkspaceContextProvider({ value, children }: { value: WorkspaceContext; children: ReactNode }) {
+  return <workspaceContext.Provider value={value}>{children}</workspaceContext.Provider>;
+}
+
 export function AuthGate({ auth, api, children }: { auth: AuthLike; api: ApiLike; children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(auth.getState());
   const [context, setContext] = useState<WorkspaceContext>();
@@ -62,5 +66,5 @@ export function AuthGate({ auth, api, children }: { auth: AuthLike; api: ApiLike
   if (!context) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading workspace...</div>;
   }
-  return <workspaceContext.Provider value={context}>{children}</workspaceContext.Provider>;
+  return <WorkspaceContextProvider value={context}>{children}</WorkspaceContextProvider>;
 }
