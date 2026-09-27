@@ -9,6 +9,7 @@ type AdminAuth = {
 type MembersDependencies = { authClient: AuthClient; dbClient: WorkspaceClient; adminAuth: AdminAuth };
 type MemberRequest = { operation: "invite" | "set-role" | "deactivate" | "reactivate"; email?: string; userId?: string; role?: string };
 const roles = new Set(["owner", "administrator", "bookkeeper"]);
+const assignableRoles = new Set(["administrator", "bookkeeper"]);
 
 export function createMembersHandler(deps: MembersDependencies) {
   return async function handleMembers(request: Request): Promise<Response> {
@@ -26,7 +27,7 @@ export function createMembersHandler(deps: MembersDependencies) {
       }
 
       if (body.operation === "invite") {
-        if (typeof body.email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) || typeof body.role !== "string" || !roles.has(body.role)) {
+        if (typeof body.email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) || typeof body.role !== "string" || !assignableRoles.has(body.role)) {
           throw new ApiError("VALIDATION_FAILED", "Invitation details are invalid.", 400);
         }
         const invited = await deps.adminAuth.inviteUserByEmail(body.email.toLowerCase(), {
@@ -45,7 +46,7 @@ export function createMembersHandler(deps: MembersDependencies) {
       if (body.operation === "deactivate" && body.userId === user.id) {
         throw new ApiError("VALIDATION_FAILED", "The Owner cannot deactivate their own account.", 400);
       }
-      if (body.operation === "set-role" && (typeof body.role !== "string" || !roles.has(body.role))) {
+      if (body.operation === "set-role" && (typeof body.role !== "string" || !assignableRoles.has(body.role) || body.userId === user.id)) {
         throw new ApiError("VALIDATION_FAILED", "Member role is invalid.", 400);
       }
       const update = deps.dbClient.from("workspace_members") as unknown as {
