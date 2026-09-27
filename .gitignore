@@ -40,3 +40,6 @@ lerna-debug.log*
 
 # env
 .env
+
+# Electron release inspection output
+/frontend/release-icon-check/
