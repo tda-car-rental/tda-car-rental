@@ -48,4 +48,21 @@ describe("cloud document store", () => {
     expect(saved).toBeTypeOf("string");
     expect(api.sync).not.toHaveBeenCalled();
   });
+
+  it("does not turn authorization failures into offline mutations", async () => {
+    const api = {
+      listDocuments: vi.fn(async () => ({ documents: [], nextCursor: null })),
+      getDocument: vi.fn(),
+      saveDocument: vi.fn(async () => {
+        const { CloudApiError } = await import("@/lib/cloud-api");
+        throw new CloudApiError("FORBIDDEN", 403, "Access denied.");
+      }),
+      deleteDocument: vi.fn(),
+      sync: vi.fn(),
+    };
+    const store = createCloudDocumentStore({ api, workspaceId: "workspace-1", cache: createCache() });
+
+    await expect(store.save({ ...document, id: undefined } as never)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(api.sync).not.toHaveBeenCalled();
+  });
 });
