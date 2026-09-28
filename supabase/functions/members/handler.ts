@@ -44,7 +44,7 @@ type MemberDeleteQuery = {
 
 type AuthLookupClient = WorkspaceClient & {
   rpc?: (name: string, args: Record<string, string>) => Promise<{
-    data: { user_id: string; email: string } | null;
+    data: Array<{ user_id: string; email: string }> | null;
     error: unknown;
   }>;
 };
@@ -70,7 +70,8 @@ async function findExistingAuthUser(deps: MembersDependencies, email: string): P
   if (!rpc) return undefined;
   const result = await rpc("find_auth_user_by_email", { target_email: email });
   if (result.error) throw new ApiError("INTERNAL_ERROR", "Invitation could not be sent.", 500);
-  return result.data ? { userId: result.data.user_id, email: result.data.email } : undefined;
+  const user = result.data?.[0];
+  return user ? { userId: user.user_id, email: user.email } : undefined;
 }
 
 function parseLimit(value: string | null): number {
