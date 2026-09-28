@@ -2,6 +2,9 @@ import type {
   CloudDocument,
   CloudDocumentInput,
   CloudDocumentKind,
+  CloudMemberRole,
+  MemberCursor,
+  MemberPage,
   DocumentCursor,
   DocumentPage,
   DocumentSummary,
@@ -77,6 +80,22 @@ export function createCloudApi(options: CloudApiOptions) {
       if (input.months !== undefined) params.set("months", queryValue(input.months) ?? "");
       params.set("summary", "1");
       return request<DocumentSummary>(`documents?${params.toString()}`, {}, workspaceId);
+    },
+    listMembers(input: { workspaceId: string; limit?: number; cursor?: MemberCursor; search?: string }): Promise<MemberPage> {
+      const params = new URLSearchParams();
+      if (input.limit !== undefined) params.set("limit", String(input.limit));
+      if (input.cursor) params.set("cursor", btoa(JSON.stringify(input.cursor)));
+      if (input.search) params.set("search", input.search);
+      return request<MemberPage>(`members?${params.toString()}`, {}, input.workspaceId);
+    },
+    inviteMember(workspaceId: string, input: { email: string; role: CloudMemberRole }): Promise<{ memberId: string }> {
+      return request<{ memberId: string }>("members", { method: "POST", body: JSON.stringify({ operation: "invite", ...input }) }, workspaceId);
+    },
+    setMemberRole(workspaceId: string, userId: string, role: CloudMemberRole): Promise<{ ok: true; memberId: string }> {
+      return request<{ ok: true; memberId: string }>("members", { method: "POST", body: JSON.stringify({ operation: "set-role", userId, role }) }, workspaceId);
+    },
+    setMemberStatus(workspaceId: string, userId: string, active: boolean): Promise<{ ok: true; memberId: string }> {
+      return request<{ ok: true; memberId: string }>("members", { method: "POST", body: JSON.stringify({ operation: active ? "reactivate" : "deactivate", userId }) }, workspaceId);
     },
     sync(workspaceId: string, mutation: Record<string, unknown>): Promise<unknown> {
       return request("sync", { method: "POST", body: JSON.stringify({ mutations: [mutation] }) }, workspaceId);

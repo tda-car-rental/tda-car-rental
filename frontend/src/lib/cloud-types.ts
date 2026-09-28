@@ -1,4 +1,5 @@
 export type CloudRole = "owner" | "administrator" | "bookkeeper";
+export type CloudMemberRole = Exclude<CloudRole, "owner">;
 export type CloudDocumentKind = "billing" | "quotation" | "acknowledgement" | "contract";
 
 export type CloudDocumentInput = {
@@ -50,4 +51,23 @@ export type WorkspaceContext = {
 export type DocumentSummary = {
   counts: Record<CloudDocumentKind, number>;
   monthlyTotals: Array<{ month: string; billing: number; quotation: number; acknowledgement: number }>;
+};
+
+export type MemberCursor = {
+  createdAt: string;
+  userId: string;
+};
+
+export type CloudMemberSummary = {
+  userId: string;
+  email: string | null;
+  role: CloudRole;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MemberPage = {
+  members: CloudMemberSummary[];
+  nextCursor: string | null;
 };

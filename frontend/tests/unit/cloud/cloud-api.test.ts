@@ -29,4 +29,34 @@ describe("cloud api", () => {
 
     expect(fetchImpl).toHaveBeenCalledWith("https://edge.example/functions/v1/documents?months=6&summary=1", expect.anything());
   });
+
+  it("lists members with a bounded cursor request and workspace scope", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ members: [], nextCursor: null }), { status: 200 }));
+    const api = createCloudApi({ baseUrl: "https://edge.example/functions/v1", getAccessToken: async () => "token", fetchImpl });
+
+    await api.listMembers({ workspaceId: "workspace-1", limit: 100, cursor: { createdAt: "2026-09-28T02:00:00.000Z", userId: "member-1" }, search: "person" });
+
+    const [url, init] = fetchImpl.mock.calls[0];
+    const parsed = new URL(url);
+    expect(parsed.pathname).toBe("/functions/v1/members");
+    expect(parsed.searchParams.get("limit")).toBe("100");
+    expect(parsed.searchParams.get("search")).toBe("person");
+    expect(parsed.searchParams.get("cursor")).toBe(btoa(JSON.stringify({ createdAt: "2026-09-28T02:00:00.000Z", userId: "member-1" })));
+    expect(new Headers(init.headers).get("x-workspace-id")).toBe("workspace-1");
+  });
+
+  it("serializes member mutations with explicit operations", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true, memberId: "member-1" }), { status: 200 }));
+    const api = createCloudApi({ baseUrl: "https://edge.example/functions/v1", getAccessToken: async () => "token", fetchImpl });
+
+    await api.inviteMember("workspace-1", { email: "person@example.invalid", role: "bookkeeper" });
+    await api.setMemberRole("workspace-1", "member-1", "administrator");
+    await api.setMemberStatus("workspace-1", "member-1", false);
+
+    expect(fetchImpl.mock.calls.map(([, init]) => JSON.parse(String(init.body)))).toEqual([
+      { operation: "invite", email: "person@example.invalid", role: "bookkeeper" },
+      { operation: "set-role", userId: "member-1", role: "administrator" },
+      { operation: "deactivate", userId: "member-1" },
+    ]);
+  });
 });
