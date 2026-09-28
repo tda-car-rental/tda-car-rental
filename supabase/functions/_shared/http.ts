@@ -7,6 +7,7 @@ export type ApiErrorCode =
   | "UNSUPPORTED_MEDIA_TYPE"
   | "NOT_FOUND"
   | "SYNC_RETRYABLE"
+  | "INVITATION_UNAVAILABLE"
   | "INTERNAL_ERROR";
 
 export class ApiError extends Error {

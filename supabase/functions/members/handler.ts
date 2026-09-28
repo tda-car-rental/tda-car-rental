@@ -61,6 +61,19 @@ const assignableRoles = new Set(["administrator", "bookkeeper"]);
 const pageSize = 50;
 const maximumPageSize = 100;
 
+function errorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object" || !("code" in error)) return undefined;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
+}
+
+function invitationUnavailable(error: unknown): ApiError {
+  if (errorCode(error) === "email_exists") {
+    return new ApiError("CONFLICT", "An account already exists for this email.", 409);
+  }
+  return new ApiError("INVITATION_UNAVAILABLE", "Email invitation service is unavailable.", 502);
+}
+
 function privilegedClient(deps: MembersDependencies): WorkspaceClient {
   return deps.adminDbClient ?? deps.dbClient;
 }
@@ -159,10 +172,15 @@ export function createMembersHandler(deps: MembersDependencies) {
         const existing = await findExistingAuthUser(deps, normalizedEmail);
         let memberId = existing?.userId;
         if (!memberId) {
-          const invited = await deps.adminAuth.inviteUserByEmail(normalizedEmail, {
-            data: { workspace_id: workspaceId, role: body.role },
-          });
-          if (invited.error || !invited.data.user) throw new ApiError("INTERNAL_ERROR", "Invitation could not be sent.", 500);
+          let invited: Awaited<ReturnType<AdminAuth["inviteUserByEmail"]>>;
+          try {
+            invited = await deps.adminAuth.inviteUserByEmail(normalizedEmail, {
+              data: { workspace_id: workspaceId, role: body.role },
+            });
+          } catch (error) {
+            throw invitationUnavailable(error);
+          }
+          if (invited.error || !invited.data.user) throw invitationUnavailable(invited.error);
           memberId = invited.data.user.id;
         }
         const table = privilegedClient(deps).from("workspace_members") as unknown as MemberTable;
@@ -177,7 +195,10 @@ export function createMembersHandler(deps: MembersDependencies) {
           }
         }
         const result = await table.insert({ workspace_id: workspaceId, user_id: memberId, email: normalizedEmail, role: body.role, active: true });
-        if (result.error) throw result.error;
+        if (result.error) {
+          if (errorCode(result.error) === "23505") throw new ApiError("CONFLICT", "Member already exists.", 409);
+          throw new ApiError("INTERNAL_ERROR", "Member could not be added.", 500);
+        }
         return jsonResponse({ memberId }, request, 201);
       }
 
