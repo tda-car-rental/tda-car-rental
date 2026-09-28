@@ -195,3 +195,110 @@ test("member operations cannot modify the owner membership", async () => {
   assert.equal(response.status, 403);
   assert.equal(updates, 0);
 });
+
+test("administrator can delete a non-owner account through the isolated auth-admin dependency", async () => {
+  let deletedUserId = "";
+  let softDelete = false;
+  let membershipDeleted = false;
+  const targetQuery = {
+    select() { return targetQuery; }, eq() { return targetQuery; },
+    async maybeSingle() { return { data: { user_id: "member-user-1", role: "bookkeeper" as const, active: true }, error: null }; },
+  };
+  const deleteQuery = {
+    eq() { membershipDeleted = true; return deleteQuery; },
+  };
+  const table = {
+    select() { return targetQuery; },
+    delete() { return deleteQuery; },
+  };
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "administrator-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        const builder = {
+          select() { return builder; }, eq() { return builder; },
+          async maybeSingle() { return { data: { workspace_id: "workspace-1", role: "administrator", active: true }, error: null }; },
+        };
+        return builder;
+      },
+    },
+    adminDbClient: { from() { return table; } },
+    adminAuth: {
+      async inviteUserByEmail() { throw new Error("not reached"); },
+      async deleteUser(userId: string, shouldSoftDelete: boolean) {
+        deletedUserId = userId;
+        softDelete = shouldSoftDelete;
+        return { data: { user: null }, error: null };
+      },
+    },
+  });
+  const response = await handler(new Request("https://edge.example/members", {
+    method: "POST",
+    headers: { "content-type": "application/json", Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+    body: JSON.stringify({ operation: "delete", userId: "member-user-1" }),
+  }));
+  assert.equal(response.status, 200);
+  assert.equal(deletedUserId, "member-user-1");
+  assert.equal(softDelete, true);
+  assert.equal(membershipDeleted, true);
+});
+
+test("administrator cannot delete their own account", async () => {
+  let authDeleteCalls = 0;
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "administrator-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        const builder = {
+          select() { return builder; }, eq() { return builder; },
+          async maybeSingle() { return { data: { workspace_id: "workspace-1", role: "administrator", active: true }, error: null }; },
+        };
+        return builder;
+      },
+    },
+    adminDbClient: { from() { throw new Error("not reached"); } },
+    adminAuth: {
+      async inviteUserByEmail() { throw new Error("not reached"); },
+      async deleteUser() { authDeleteCalls += 1; return { data: { user: null }, error: null }; },
+    },
+  });
+  const response = await handler(new Request("https://edge.example/members", {
+    method: "POST",
+    headers: { "content-type": "application/json", Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+    body: JSON.stringify({ operation: "delete", userId: "administrator-1" }),
+  }));
+  assert.equal(response.status, 400);
+  assert.equal(authDeleteCalls, 0);
+});
+
+test("administrator cannot delete an owner account", async () => {
+  let authDeleteCalls = 0;
+  const targetQuery = {
+    select() { return targetQuery; }, eq() { return targetQuery; },
+    async maybeSingle() { return { data: { user_id: "owner-user-1", role: "owner" as const, active: true }, error: null }; },
+  };
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "administrator-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        const builder = {
+          select() { return builder; }, eq() { return builder; },
+          async maybeSingle() { return { data: { workspace_id: "workspace-1", role: "administrator", active: true }, error: null }; },
+        };
+        return builder;
+      },
+    },
+    adminDbClient: { from() { return { select() { return targetQuery; } }; } },
+    adminAuth: {
+      async inviteUserByEmail() { throw new Error("not reached"); },
+      async deleteUser() { authDeleteCalls += 1; return { data: { user: null }, error: null }; },
+    },
+  });
+  const response = await handler(new Request("https://edge.example/members", {
+    method: "POST",
+    headers: { "content-type": "application/json", Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+    body: JSON.stringify({ operation: "delete", userId: "owner-user-1" }),
+  }));
+  assert.equal(response.status, 403);
+  assert.equal(authDeleteCalls, 0);
+});

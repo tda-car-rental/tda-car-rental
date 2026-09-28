@@ -4,6 +4,7 @@ import { canManageMembers } from "../_shared/roles.ts";
 
 type AdminAuth = {
   inviteUserByEmail(email: string, options: { data: Record<string, string> }): Promise<{ data: { user: { id: string } | null }; error: unknown }>;
+  deleteUser?(userId: string, shouldSoftDelete?: boolean): Promise<{ data: { user: { id: string } | null }; error: unknown }>;
 };
 
 type MemberRow = {
@@ -30,10 +31,15 @@ type MemberTable = {
   select(columns: string): MemberQuery;
   insert(values: Record<string, unknown>): Promise<{ error: unknown }>;
   update(values: Record<string, unknown>): MemberUpdateQuery;
+  delete(): MemberDeleteQuery;
 };
 
 type MemberUpdateQuery = {
   eq(column: string, value: string | boolean): MemberUpdateQuery;
+};
+
+type MemberDeleteQuery = {
+  eq(column: string, value: string | boolean): MemberDeleteQuery;
 };
 
 type MembersDependencies = {
@@ -43,7 +49,7 @@ type MembersDependencies = {
   adminAuth: AdminAuth;
 };
 type MemberRole = "administrator" | "bookkeeper";
-type MemberRequest = { operation: "invite" | "set-role" | "deactivate" | "reactivate"; email?: string; userId?: string; role?: string };
+type MemberRequest = { operation: "invite" | "set-role" | "deactivate" | "reactivate" | "delete"; email?: string; userId?: string; role?: string };
 const assignableRoles = new Set(["administrator", "bookkeeper"]);
 const pageSize = 50;
 const maximumPageSize = 100;
@@ -125,7 +131,7 @@ export function createMembersHandler(deps: MembersDependencies) {
       if (!canManageMembers(membership.role)) throw new ApiError("FORBIDDEN", "Access denied.", 403);
       if (request.method === "GET") return jsonResponse(await listMembers(deps, membership.workspaceId, new URL(request.url)), request);
       const body = await readJson<MemberRequest>(request);
-      if (!body.operation || !["invite", "set-role", "deactivate", "reactivate"].includes(body.operation)) {
+      if (!body.operation || !["invite", "set-role", "deactivate", "reactivate", "delete"].includes(body.operation)) {
         throw new ApiError("VALIDATION_FAILED", "Member operation is invalid.", 400);
       }
 
@@ -149,6 +155,9 @@ export function createMembersHandler(deps: MembersDependencies) {
       if (body.operation === "deactivate" && body.userId === user.id) {
         throw new ApiError("VALIDATION_FAILED", "You cannot deactivate your own account.", 400);
       }
+      if (body.operation === "delete" && body.userId === user.id) {
+        throw new ApiError("VALIDATION_FAILED", "You cannot delete your own account.", 400);
+      }
       if (body.operation === "set-role" && (typeof body.role !== "string" || !assignableRoles.has(body.role) || body.userId === user.id)) {
         throw new ApiError("VALIDATION_FAILED", "Member role is invalid.", 400);
       }
@@ -158,6 +167,14 @@ export function createMembersHandler(deps: MembersDependencies) {
       if (targetResult.error) throw targetResult.error;
       if (!targetResult.data) throw new ApiError("NOT_FOUND", "Member was not found.", 404);
       if (targetResult.data.role === "owner") throw new ApiError("FORBIDDEN", "Owner membership cannot be changed here.", 403);
+      if (body.operation === "delete") {
+        if (!deps.adminAuth.deleteUser) throw new ApiError("INTERNAL_ERROR", "Account deletion is unavailable.", 500);
+        const deleted = await deps.adminAuth.deleteUser(body.userId, true);
+        if (deleted.error) throw new ApiError("INTERNAL_ERROR", "Account could not be deleted.", 500);
+        const result = await (table.delete().eq("workspace_id", workspaceId).eq("user_id", body.userId) as unknown as Promise<{ error: unknown }>);
+        if (result.error) throw result.error;
+        return jsonResponse({ ok: true, memberId: body.userId }, request);
+      }
       const values = body.operation === "set-role" ? { role: body.role } : { active: body.operation === "reactivate" };
       const result = await (table.update(values).eq("workspace_id", workspaceId).eq("user_id", body.userId) as unknown as Promise<{ error: unknown }>);
       if (result.error) throw result.error;

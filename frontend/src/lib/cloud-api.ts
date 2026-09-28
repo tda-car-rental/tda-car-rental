@@ -97,6 +97,9 @@ export function createCloudApi(options: CloudApiOptions) {
     setMemberStatus(workspaceId: string, userId: string, active: boolean): Promise<{ ok: true; memberId: string }> {
       return request<{ ok: true; memberId: string }>("members", { method: "POST", body: JSON.stringify({ operation: active ? "reactivate" : "deactivate", userId }) }, workspaceId);
     },
+    deleteMember(workspaceId: string, userId: string): Promise<{ ok: true; memberId: string }> {
+      return request<{ ok: true; memberId: string }>("members", { method: "POST", body: JSON.stringify({ operation: "delete", userId }) }, workspaceId);
+    },
     sync(workspaceId: string, mutation: Record<string, unknown>): Promise<unknown> {
       return request("sync", { method: "POST", body: JSON.stringify({ mutations: [mutation] }) }, workspaceId);
     },
