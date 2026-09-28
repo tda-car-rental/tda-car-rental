@@ -166,6 +166,16 @@ export function createMembersHandler(deps: MembersDependencies) {
           memberId = invited.data.user.id;
         }
         const table = privilegedClient(deps).from("workspace_members") as unknown as MemberTable;
+        if (existing) {
+          const current = await table.select("user_id, role, active").eq("workspace_id", workspaceId).eq("user_id", memberId).maybeSingle();
+          if (current.error) throw new ApiError("INTERNAL_ERROR", "Invitation could not be sent.", 500);
+          if (current.data?.role === "owner") throw new ApiError("FORBIDDEN", "Owner membership cannot be changed here.", 403);
+          if (current.data) {
+            const updated = await (table.update({ email: normalizedEmail, role: body.role, active: true }).eq("workspace_id", workspaceId).eq("user_id", memberId) as unknown as Promise<{ error: unknown }>);
+            if (updated.error) throw new ApiError("INTERNAL_ERROR", "Invitation could not be sent.", 500);
+            return jsonResponse({ ok: true, memberId }, request);
+          }
+        }
         const result = await table.insert({ workspace_id: workspaceId, user_id: memberId, email: normalizedEmail, role: body.role, active: true });
         if (result.error) throw result.error;
         return jsonResponse({ memberId }, request, 201);
