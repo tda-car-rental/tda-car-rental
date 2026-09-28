@@ -32,6 +32,10 @@ export function useCloudApi(): CloudApi {
   return api;
 }
 
+export function CloudApiProvider({ value, children }: { value: CloudApi; children: ReactNode }) {
+  return <cloudApiContext.Provider value={value}>{children}</cloudApiContext.Provider>;
+}
+
 export function WorkspaceContextProvider({ value, children }: { value: WorkspaceContext; children: ReactNode }) {
   return <workspaceContext.Provider value={value}>{children}</workspaceContext.Provider>;
 }

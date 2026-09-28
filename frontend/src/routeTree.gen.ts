@@ -18,6 +18,7 @@ import { Route as QuotationRouteImport } from './routes/quotation'
 import { Route as AcknowledgementReceiptsNewRouteImport } from './routes/acknowledgement-receipts_.new'
 import { Route as AdminApiDocsRouteImport } from './routes/admin.api-docs'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as BillingNewRouteImport } from './routes/billing_.new'
 import { Route as QuotationNewRouteImport } from './routes/quotation_.new'
 import { Route as AcknowledgementReceiptsIdEditRouteImport } from './routes/acknowledgement-receipts_.$id.edit'
@@ -70,6 +71,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
 const BillingNewRoute = BillingNewRouteImport.update({
   id: '/billing_/new',
   path: '/billing/new',
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/acknowledgement-receipts/new': typeof AcknowledgementReceiptsNewRoute
   '/admin/api-docs': typeof AdminApiDocsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/billing/new': typeof BillingNewRoute
   '/quotation/new': typeof QuotationNewRoute
   '/acknowledgement-receipts/$id/edit': typeof AcknowledgementReceiptsIdEditRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/acknowledgement-receipts/new': typeof AcknowledgementReceiptsNewRoute
   '/admin/api-docs': typeof AdminApiDocsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/billing/new': typeof BillingNewRoute
   '/quotation/new': typeof QuotationNewRoute
   '/acknowledgement-receipts/$id/edit': typeof AcknowledgementReceiptsIdEditRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/acknowledgement-receipts_/new': typeof AcknowledgementReceiptsNewRoute
   '/admin/api-docs': typeof AdminApiDocsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/billing_/new': typeof BillingNewRoute
   '/quotation_/new': typeof QuotationNewRoute
   '/acknowledgement-receipts_/$id/edit': typeof AcknowledgementReceiptsIdEditRoute
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/acknowledgement-receipts/new'
     | '/admin/api-docs'
     | '/admin/settings'
+    | '/admin/users'
     | '/billing/new'
     | '/quotation/new'
     | '/acknowledgement-receipts/$id/edit'
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/acknowledgement-receipts/new'
     | '/admin/api-docs'
     | '/admin/settings'
+    | '/admin/users'
     | '/billing/new'
     | '/quotation/new'
     | '/acknowledgement-receipts/$id/edit'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/acknowledgement-receipts_/new'
     | '/admin/api-docs'
     | '/admin/settings'
+    | '/admin/users'
     | '/billing_/new'
     | '/quotation_/new'
     | '/acknowledgement-receipts_/$id/edit'
@@ -277,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/billing_/new': {
       id: '/billing_/new'
       path: '/billing/new'
@@ -318,11 +337,13 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminApiDocsRoute: typeof AdminApiDocsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminApiDocsRoute: AdminApiDocsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminUsersRoute: AdminUsersRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
