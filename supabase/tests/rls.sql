@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(17);
 
 create temporary table rls_fixture (
   workspace_id uuid not null,
@@ -110,6 +110,36 @@ select ok(
 select ok(
   not (select public.can_write_document(workspace_id, 'contract') from rls_fixture),
   'bookkeeper cannot write contracts'
+);
+
+select set_config('request.jwt.claim.sub', owner_id::text, true) from rls_fixture;
+select ok(
+  (select public.can_manage_members(workspace_id) from rls_fixture),
+  'owner can manage workspace members'
+);
+select ok(
+  (select count(*) = 3 from public.workspace_members),
+  'owner can read all workspace memberships'
+);
+
+select set_config('request.jwt.claim.sub', administrator_id::text, true) from rls_fixture;
+select ok(
+  (select public.can_manage_members(workspace_id) from rls_fixture),
+  'administrator can manage workspace members'
+);
+select ok(
+  (select count(*) = 3 from public.workspace_members),
+  'administrator can read all workspace memberships'
+);
+
+select set_config('request.jwt.claim.sub', bookkeeper_id::text, true) from rls_fixture;
+select ok(
+  not (select public.can_manage_members(workspace_id) from rls_fixture),
+  'bookkeeper cannot manage workspace members'
+);
+select ok(
+  (select count(*) = 1 from public.workspace_members),
+  'bookkeeper can read only their active membership'
 );
 
 select set_config('request.jwt.claim.sub', outsider_id::text, true) from rls_fixture;

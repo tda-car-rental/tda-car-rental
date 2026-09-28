@@ -29,7 +29,7 @@
 | `supabase/functions/workspace-context/handler.ts` | Return the frontend-safe admin capabilities in workspace context. |
 | `supabase/functions/members/handler.ts` | Authenticate, authorize, paginate, invite, update, deactivate, and reactivate workspace members. |
 | `supabase/functions/members/handler.test.ts` | Authorization, validation, pagination, and mutation contract tests. |
-| `supabase/migrations/000009_09282026-1951_administrator_member_access.sql` | Append-only schema/index/RLS correction for administrator member management. |
+| `supabase/migrations/000009_09282026-2001_administrator_member_access.sql` | Append-only schema/index/RLS correction for administrator member management. |
 | `supabase/tests/rls.sql` | SQL assertions for self visibility, admin member management, and bookkeeper denial. |
 | `frontend/src/lib/cloud-types.ts` | Shared member, cursor, capability, and page response types. |
 | `frontend/src/lib/cloud-api.ts` | Typed Edge Function client methods for member reads and mutations. |
