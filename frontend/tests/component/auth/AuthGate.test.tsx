@@ -25,7 +25,7 @@ describe("AuthGate", () => {
       ...signedOutAuth(),
       getState: () => ({ status: "signed-in" as const, user: { id: "user-1" }, accessToken: "token" }),
     };
-    const api = { getWorkspaceContext: vi.fn().mockResolvedValue({ workspaceId: "workspace-1", workspaceName: "TDA Car Rental", role: "owner", capabilities: { canManageMembers: true, canWriteContracts: true } }) };
+    const api = { getWorkspaceContext: vi.fn().mockResolvedValue({ workspaceId: "workspace-1", workspaceName: "TDA Car Rental", role: "owner", capabilities: { canAccessAdmin: true, canManageMembers: true, canManageWorkspaceSettings: true, canWriteContracts: true } }) };
     render(<AuthGate auth={auth} api={api}><div>Application</div></AuthGate>);
     await waitFor(() => expect(screen.getByText("Application")).toBeInTheDocument());
     expect(api.getWorkspaceContext).toHaveBeenCalledOnce();
@@ -42,7 +42,7 @@ describe("AuthGate", () => {
         api={{ getWorkspaceContext: vi.fn() }}
         getCachedWorkspaceContext={async () => ({
           workspaceId: "workspace-1", workspaceName: "TDA Car Rental", role: "bookkeeper",
-          capabilities: { canManageMembers: false, canWriteContracts: false },
+          capabilities: { canAccessAdmin: false, canManageMembers: false, canManageWorkspaceSettings: false, canWriteContracts: false },
         })}
       >
         <div>Cached application</div>

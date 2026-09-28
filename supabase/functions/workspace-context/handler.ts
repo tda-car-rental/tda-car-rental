@@ -1,6 +1,6 @@
 import { requireAnyWorkspaceMember, requireUser, requireWorkspaceMember, type AuthClient, type WorkspaceClient } from "../_shared/auth.ts";
 import { handleOptions, jsonResponse, ApiError } from "../_shared/http.ts";
-import { canManageMembers, canWriteDocument } from "../_shared/roles.ts";
+import { canAccessAdmin, canManageMembers, canManageWorkspaceSettings, canWriteDocument } from "../_shared/roles.ts";
 
 type ContextDependencies = { authClient: AuthClient; dbClient: WorkspaceClient };
 
@@ -24,7 +24,9 @@ export function createWorkspaceContextHandler(deps: ContextDependencies) {
         workspaceName: workspace.data.name,
         role: member.role,
         capabilities: {
+          canAccessAdmin: canAccessAdmin(member.role),
           canManageMembers: canManageMembers(member.role),
+          canManageWorkspaceSettings: canManageWorkspaceSettings(member.role),
           canWriteContracts: canWriteDocument(member.role, "contract"),
         },
       }, request);

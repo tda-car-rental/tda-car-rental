@@ -7,7 +7,12 @@ const context = {
   workspaceId: "workspace-1",
   workspaceName: "TDA Car Rental",
   role: "bookkeeper" as const,
-  capabilities: { canManageMembers: false, canWriteContracts: false },
+  capabilities: {
+    canAccessAdmin: false,
+    canManageMembers: false,
+    canManageWorkspaceSettings: false,
+    canWriteContracts: false,
+  },
 };
 
 describe("RoleGate", () => {

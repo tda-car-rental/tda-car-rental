@@ -40,7 +40,9 @@ export type WorkspaceContext = {
   workspaceName: string;
   role: CloudRole;
   capabilities: {
+    canAccessAdmin: boolean;
     canManageMembers: boolean;
+    canManageWorkspaceSettings: boolean;
     canWriteContracts: boolean;
   };
 };

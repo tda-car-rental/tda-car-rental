@@ -14,6 +14,14 @@ export function canWriteDocument(role: CloudRole, kind: CloudDocumentKind): bool
 }
 
 export function canManageMembers(role: CloudRole): boolean {
+  return role === "owner" || role === "administrator";
+}
+
+export function canAccessAdmin(role: CloudRole): boolean {
+  return role === "owner" || role === "administrator";
+}
+
+export function canManageWorkspaceSettings(role: CloudRole): boolean {
   return role === "owner";
 }
 

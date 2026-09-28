@@ -26,7 +26,12 @@ test("workspace context returns role capabilities only for an active member", as
     workspaceId: "workspace-1",
     workspaceName: "TDA Car Rental",
     role: "bookkeeper",
-    capabilities: { canManageMembers: false, canWriteContracts: false },
+    capabilities: {
+      canAccessAdmin: false,
+      canManageMembers: false,
+      canManageWorkspaceSettings: false,
+      canWriteContracts: false,
+    },
   });
 });
 
