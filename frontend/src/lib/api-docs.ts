@@ -37,11 +37,12 @@ export const apiOperations: ApiDocumentationOperation[] = [
     id: "members-mutations",
     method: "POST",
     path: "/members",
-    summary: "Invite a member or update an eligible member's role/status.",
+    summary: "Invite, update, or delete an eligible member account.",
     authentication: "Bearer access token required.",
     workspace: "x-workspace-id is required; Owner or Administrator role required.",
-    request: "JSON operation: invite, set-role, deactivate, or reactivate. Owner assignment is not supported.",
-    response: "Invite: { memberId }; status/role update: { ok, memberId }",
+    request:
+      "JSON operation: invite, set-role, deactivate, reactivate, or delete. Owner assignment/deletion is not supported.",
+    response: "Invite: { memberId }; role/status/delete: { ok, memberId }",
     errors: ["400 VALIDATION_FAILED", "401 UNAUTHENTICATED", "403 FORBIDDEN", "404 NOT_FOUND"],
   },
   {

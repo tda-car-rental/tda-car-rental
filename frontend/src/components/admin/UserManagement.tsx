@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { MailPlus, RefreshCw, UserRound } from "lucide-react";
+import { MailPlus, RefreshCw, Trash2, UserRound } from "lucide-react";
 import { useCloudApi, useWorkspaceContext } from "@/components/auth/AuthGate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,20 @@ export function UserManagement() {
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Member status could not be updated.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function deleteMember(member: CloudMemberSummary) {
+    if (!window.confirm(`Delete the account for ${member.email ?? "this member"}?`)) return;
+    setWorking(true);
+    setError(undefined);
+    try {
+      await api.deleteMember(workspaceId, member.userId);
+      setMembers((current) => current.filter((item) => item.userId !== member.userId));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Account could not be deleted.");
     } finally {
       setWorking(false);
     }
@@ -206,6 +220,7 @@ export function UserManagement() {
                     disabled={working}
                     onRoleChange={updateRole}
                     onStatusChange={updateStatus}
+                    onDelete={deleteMember}
                   />
                 ))}
               </TableBody>
@@ -235,11 +250,13 @@ function MemberRow({
   disabled,
   onRoleChange,
   onStatusChange,
+  onDelete,
 }: {
   member: CloudMemberSummary;
   disabled: boolean;
   onRoleChange: (member: CloudMemberSummary, role: CloudMemberRole) => Promise<void>;
   onStatusChange: (member: CloudMemberSummary) => Promise<void>;
+  onDelete: (member: CloudMemberSummary) => Promise<void>;
 }) {
   return (
     <TableRow>
@@ -267,15 +284,29 @@ function MemberRow({
         {new Date(member.createdAt).toLocaleDateString("en-PH")}
       </TableCell>
       <TableCell className="text-right">
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => void onStatusChange(member)}
-          disabled={disabled || member.role === "owner"}
-        >
-          {member.active ? "Deactivate" : "Reactivate"}
-        </Button>
+        <div className="flex justify-end gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => void onStatusChange(member)}
+            disabled={disabled || member.role === "owner"}
+          >
+            {member.active ? "Deactivate" : "Reactivate"}
+          </Button>
+          {member.role !== "owner" ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={() => void onDelete(member)}
+              disabled={disabled}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete account
+            </Button>
+          ) : null}
+        </div>
       </TableCell>
     </TableRow>
   );

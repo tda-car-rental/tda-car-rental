@@ -52,11 +52,13 @@ describe("cloud api", () => {
     await api.inviteMember("workspace-1", { email: "person@example.invalid", role: "bookkeeper" });
     await api.setMemberRole("workspace-1", "member-1", "administrator");
     await api.setMemberStatus("workspace-1", "member-1", false);
+    await api.deleteMember("workspace-1", "member-1");
 
     expect(fetchImpl.mock.calls.map(([, init]) => JSON.parse(String(init.body)))).toEqual([
       { operation: "invite", email: "person@example.invalid", role: "bookkeeper" },
       { operation: "set-role", userId: "member-1", role: "administrator" },
       { operation: "deactivate", userId: "member-1" },
+      { operation: "delete", userId: "member-1" },
     ]);
   });
 });

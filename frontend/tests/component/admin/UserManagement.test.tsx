@@ -142,4 +142,33 @@ describe("UserManagement", () => {
       expect(api.setMemberStatus).toHaveBeenCalledWith("workspace-1", "member-1", true),
     );
   });
+
+  it("allows an administrator to delete a non-owner account after confirmation", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const api = {
+      listMembers: vi.fn().mockResolvedValue({
+        members: [
+          {
+            userId: "member-1",
+            email: "remove@example.invalid",
+            role: "bookkeeper",
+            active: true,
+            createdAt: "2026-09-28T00:00:00.000Z",
+            updatedAt: "2026-09-28T00:00:00.000Z",
+          },
+        ],
+        nextCursor: null,
+      }),
+      inviteMember: vi.fn(),
+      setMemberRole: vi.fn(),
+      setMemberStatus: vi.fn(),
+      deleteMember: vi.fn().mockResolvedValue({ ok: true, memberId: "member-1" }),
+    } as unknown as CloudApi;
+    renderPage(api);
+
+    expect(await screen.findByText("remove@example.invalid")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+    await waitFor(() => expect(api.deleteMember).toHaveBeenCalledWith("workspace-1", "member-1"));
+    expect(confirm).toHaveBeenCalledWith("Delete the account for remove@example.invalid?");
+  });
 });
