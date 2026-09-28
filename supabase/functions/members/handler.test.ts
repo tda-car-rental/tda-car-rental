@@ -76,6 +76,28 @@ test("owner cannot create or assign another owner through member administration"
 test("owner can add an existing auth user without sending a duplicate invitation", async () => {
   let insertedUserId = "";
   let invitationCalls = 0;
+  const adminDbClient = {
+    rpc(this: typeof adminDbClient, name: string, args: Record<string, string>) {
+      assert.equal(this, adminDbClient);
+      assert.equal(name, "find_auth_user_by_email");
+      assert.equal(args.target_email, "existing@example.invalid");
+      return Promise.resolve({ data: [{ user_id: "existing-user-1", email: "existing@example.invalid" }], error: null });
+    },
+    from() {
+      const query = {
+        select() { return query; },
+        eq() { return query; },
+        async maybeSingle() { return { data: null, error: null }; },
+      };
+      return {
+        select() { return query; },
+        async insert(values: Record<string, unknown>) {
+          insertedUserId = String(values.user_id);
+          return { error: null };
+        },
+      };
+    },
+  };
   const handler = createMembersHandler({
     authClient: { auth: { async getUser() { return { data: { user: { id: "owner-1" } }, error: null }; } } },
     dbClient: {
@@ -87,27 +109,7 @@ test("owner can add an existing auth user without sending a duplicate invitation
         return builder;
       },
     },
-    adminDbClient: {
-      rpc(name: string, args: Record<string, string>) {
-        assert.equal(name, "find_auth_user_by_email");
-        assert.equal(args.target_email, "existing@example.invalid");
-        return Promise.resolve({ data: [{ user_id: "existing-user-1", email: "existing@example.invalid" }], error: null });
-      },
-      from() {
-        const query = {
-          select() { return query; },
-          eq() { return query; },
-          async maybeSingle() { return { data: null, error: null }; },
-        };
-        return {
-          select() { return query; },
-          async insert(values: Record<string, unknown>) {
-            insertedUserId = String(values.user_id);
-            return { error: null };
-          },
-        };
-      },
-    },
+    adminDbClient,
     adminAuth: {
       async inviteUserByEmail() {
         invitationCalls += 1;

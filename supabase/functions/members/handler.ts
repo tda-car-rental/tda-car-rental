@@ -79,9 +79,9 @@ function privilegedClient(deps: MembersDependencies): WorkspaceClient {
 }
 
 async function findExistingAuthUser(deps: MembersDependencies, email: string): Promise<{ userId: string; email: string } | undefined> {
-  const rpc = deps.adminDbClient?.rpc;
-  if (!rpc) return undefined;
-  const result = await rpc("find_auth_user_by_email", { target_email: email });
+  const adminDbClient = deps.adminDbClient;
+  if (!adminDbClient?.rpc) return undefined;
+  const result = await adminDbClient.rpc("find_auth_user_by_email", { target_email: email });
   if (result.error) throw new ApiError("INTERNAL_ERROR", "Invitation could not be sent.", 500);
   const user = result.data?.[0];
   return user ? { userId: user.user_id, email: user.email } : undefined;
