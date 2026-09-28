@@ -91,7 +91,7 @@ test("owner can add an existing auth user without sending a duplicate invitation
       rpc(name: string, args: Record<string, string>) {
         assert.equal(name, "find_auth_user_by_email");
         assert.equal(args.target_email, "existing@example.invalid");
-        return Promise.resolve({ data: { user_id: "existing-user-1", email: "existing@example.invalid" }, error: null });
+        return Promise.resolve({ data: [{ user_id: "existing-user-1", email: "existing@example.invalid" }], error: null });
       },
       from() {
         return {
