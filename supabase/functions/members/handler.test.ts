@@ -233,6 +233,30 @@ test("membership write failures return a safe member error", async () => {
   assert.deepEqual(await response.json(), { error: { code: "CONFLICT", message: "Member already exists." } });
 });
 
+test("unexpected dependency failures identify the safe operation stage", async () => {
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "owner-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        const builder = {
+          select() { return builder; },
+          eq() { return builder; },
+          async maybeSingle() { throw new Error("database unavailable"); },
+        };
+        return builder;
+      },
+    },
+    adminAuth: { async inviteUserByEmail() { throw new Error("not reached"); } },
+  });
+  const response = await handler(new Request("https://edge.example/members", {
+    method: "POST",
+    headers: { "content-type": "application/json", Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+    body: JSON.stringify({ operation: "invite", email: "new@example.invalid", role: "bookkeeper" }),
+  }));
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: { code: "INTERNAL_ERROR", message: "Member operation failed at workspace-authorization." } });
+});
+
 test("administrator can read a bounded member page with an opaque next cursor", async () => {
   let requestedLimit = 0;
   let requestedCursor = "";

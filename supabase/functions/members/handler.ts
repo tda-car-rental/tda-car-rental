@@ -151,14 +151,21 @@ async function listMembers(deps: MembersDependencies, workspaceId: string, url: 
 export function createMembersHandler(deps: MembersDependencies) {
   return async function handleMembers(request: Request): Promise<Response> {
     if (request.method === "OPTIONS") return handleOptions(request);
+    let stage = "request";
     try {
       if (request.method !== "GET" && request.method !== "POST") throw new ApiError("VALIDATION_FAILED", "Method is not supported.", 405);
+      stage = "authentication";
       const user = await requireUser(request, deps.authClient);
+      stage = "workspace-authorization";
       const workspaceId = request.headers.get("x-workspace-id")?.trim();
       if (!workspaceId) throw new ApiError("VALIDATION_FAILED", "Workspace is required.", 400);
       const membership = await requireWorkspaceMember(deps.dbClient, workspaceId, user.id);
       if (!canManageMembers(membership.role)) throw new ApiError("FORBIDDEN", "Access denied.", 403);
-      if (request.method === "GET") return jsonResponse(await listMembers(deps, membership.workspaceId, new URL(request.url)), request);
+      if (request.method === "GET") {
+        stage = "member-list";
+        return jsonResponse(await listMembers(deps, membership.workspaceId, new URL(request.url)), request);
+      }
+      stage = "request-body";
       const body = await readJson<MemberRequest>(request);
       if (!body.operation || !["invite", "set-role", "deactivate", "reactivate", "delete"].includes(body.operation)) {
         throw new ApiError("VALIDATION_FAILED", "Member operation is invalid.", 400);
@@ -169,9 +176,11 @@ export function createMembersHandler(deps: MembersDependencies) {
           throw new ApiError("VALIDATION_FAILED", "Invitation details are invalid.", 400);
         }
         const normalizedEmail = body.email.trim().toLowerCase();
+        stage = "auth-user-lookup";
         const existing = await findExistingAuthUser(deps, normalizedEmail);
         let memberId = existing?.userId;
         if (!memberId) {
+          stage = "email-invitation";
           let invited: Awaited<ReturnType<AdminAuth["inviteUserByEmail"]>>;
           try {
             invited = await deps.adminAuth.inviteUserByEmail(normalizedEmail, {
@@ -183,6 +192,7 @@ export function createMembersHandler(deps: MembersDependencies) {
           if (invited.error || !invited.data.user) throw invitationUnavailable(invited.error);
           memberId = invited.data.user.id;
         }
+        stage = "membership-lookup";
         const table = privilegedClient(deps).from("workspace_members") as unknown as MemberTable;
         if (existing) {
           const current = await table.select("user_id, role, active").eq("workspace_id", workspaceId).eq("user_id", memberId).maybeSingle();
@@ -194,6 +204,7 @@ export function createMembersHandler(deps: MembersDependencies) {
             return jsonResponse({ ok: true, memberId }, request);
           }
         }
+        stage = "membership-write";
         const result = await table.insert({ workspace_id: workspaceId, user_id: memberId, email: normalizedEmail, role: body.role, active: true });
         if (result.error) {
           if (errorCode(result.error) === "23505") throw new ApiError("CONFLICT", "Member already exists.", 409);
@@ -215,6 +226,7 @@ export function createMembersHandler(deps: MembersDependencies) {
         throw new ApiError("VALIDATION_FAILED", "Member role is invalid.", 400);
       }
       const table = privilegedClient(deps).from("workspace_members") as unknown as MemberTable;
+      stage = "membership-lookup";
       const targetQuery = table.select("user_id, role, active");
       const targetResult = await targetQuery.eq("workspace_id", workspaceId).eq("user_id", body.userId).maybeSingle();
       if (targetResult.error) throw targetResult.error;
@@ -222,6 +234,7 @@ export function createMembersHandler(deps: MembersDependencies) {
       if (targetResult.data.role === "owner") throw new ApiError("FORBIDDEN", "Owner membership cannot be changed here.", 403);
       if (body.operation === "delete") {
         if (!deps.adminAuth.deleteUser) throw new ApiError("INTERNAL_ERROR", "Account deletion is unavailable.", 500);
+        stage = "auth-account-delete";
         const deleted = await deps.adminAuth.deleteUser(body.userId, true);
         if (deleted.error) throw new ApiError("INTERNAL_ERROR", "Account could not be deleted.", 500);
         const result = await (table.delete().eq("workspace_id", workspaceId).eq("user_id", body.userId) as unknown as Promise<{ error: unknown }>);
@@ -229,12 +242,14 @@ export function createMembersHandler(deps: MembersDependencies) {
         return jsonResponse({ ok: true, memberId: body.userId }, request);
       }
       const values = body.operation === "set-role" ? { role: body.role } : { active: body.operation === "reactivate" };
+      stage = "membership-write";
       const result = await (table.update(values).eq("workspace_id", workspaceId).eq("user_id", body.userId) as unknown as Promise<{ error: unknown }>);
       if (result.error) throw result.error;
       return jsonResponse({ ok: true, memberId: body.userId }, request);
     } catch (error) {
       if (error instanceof ApiError) return jsonResponse(error, request);
-      return jsonResponse(new ApiError("INTERNAL_ERROR", "Member operation failed.", 500), request);
+      console.error("members_unhandled_error", { stage, code: errorCode(error) });
+      return jsonResponse(new ApiError("INTERNAL_ERROR", `Member operation failed at ${stage}.`, 500), request);
     }
   };
 }
