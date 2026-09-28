@@ -264,16 +264,20 @@ function MemberRow({
         {member.email ?? <span className="text-muted-foreground">Email unavailable</span>}
       </TableCell>
       <TableCell>
-        <select
-          aria-label={`Role for ${member.email ?? member.userId}`}
-          value={member.role === "owner" ? "administrator" : member.role}
-          onChange={(event) => void onRoleChange(member, event.target.value as CloudMemberRole)}
-          disabled={disabled || member.role === "owner"}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-        >
-          <option value="administrator">Administrator</option>
-          <option value="bookkeeper">Bookkeeper</option>
-        </select>
+        {member.role === "owner" ? (
+          <Badge variant="outline">Owner</Badge>
+        ) : (
+          <select
+            aria-label={`Role for ${member.email ?? member.userId}`}
+            value={member.role}
+            onChange={(event) => void onRoleChange(member, event.target.value as CloudMemberRole)}
+            disabled={disabled}
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+          >
+            <option value="administrator">Administrator</option>
+            <option value="bookkeeper">Bookkeeper</option>
+          </select>
+        )}
       </TableCell>
       <TableCell>
         <Badge variant={member.active ? "secondary" : "outline"}>

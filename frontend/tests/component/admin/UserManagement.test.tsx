@@ -171,4 +171,32 @@ describe("UserManagement", () => {
     await waitFor(() => expect(api.deleteMember).toHaveBeenCalledWith("workspace-1", "member-1"));
     expect(confirm).toHaveBeenCalledWith("Delete the account for remove@example.invalid?");
   });
+
+  it("renders the owner role without presenting it as an administrator", async () => {
+    const api = {
+      listMembers: vi.fn().mockResolvedValue({
+        members: [
+          {
+            userId: "owner-user-1",
+            email: "owner@example.invalid",
+            role: "owner",
+            active: true,
+            createdAt: "2026-09-28T00:00:00.000Z",
+            updatedAt: "2026-09-28T00:00:00.000Z",
+          },
+        ],
+        nextCursor: null,
+      }),
+      inviteMember: vi.fn(),
+      setMemberRole: vi.fn(),
+      setMemberStatus: vi.fn(),
+      deleteMember: vi.fn(),
+    } as unknown as CloudApi;
+    renderPage(api);
+
+    expect(await screen.findByText("owner@example.invalid")).toBeInTheDocument();
+    expect(screen.getByText("Owner")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Role for owner@example.invalid")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete account" })).not.toBeInTheDocument();
+  });
 });
