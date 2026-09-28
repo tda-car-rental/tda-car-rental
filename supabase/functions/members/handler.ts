@@ -42,10 +42,17 @@ type MemberDeleteQuery = {
   eq(column: string, value: string | boolean): MemberDeleteQuery;
 };
 
+type AuthLookupClient = WorkspaceClient & {
+  rpc?: (name: string, args: Record<string, string>) => Promise<{
+    data: { user_id: string; email: string } | null;
+    error: unknown;
+  }>;
+};
+
 type MembersDependencies = {
   authClient: AuthClient;
   dbClient: WorkspaceClient;
-  adminDbClient?: WorkspaceClient;
+  adminDbClient?: AuthLookupClient;
   adminAuth: AdminAuth;
 };
 type MemberRole = "administrator" | "bookkeeper";
@@ -56,6 +63,14 @@ const maximumPageSize = 100;
 
 function privilegedClient(deps: MembersDependencies): WorkspaceClient {
   return deps.adminDbClient ?? deps.dbClient;
+}
+
+async function findExistingAuthUser(deps: MembersDependencies, email: string): Promise<{ userId: string; email: string } | undefined> {
+  const rpc = deps.adminDbClient?.rpc;
+  if (!rpc) return undefined;
+  const result = await rpc("find_auth_user_by_email", { target_email: email });
+  if (result.error) throw new ApiError("INTERNAL_ERROR", "Invitation could not be sent.", 500);
+  return result.data ? { userId: result.data.user_id, email: result.data.email } : undefined;
 }
 
 function parseLimit(value: string | null): number {
@@ -139,14 +154,20 @@ export function createMembersHandler(deps: MembersDependencies) {
         if (typeof body.email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) || typeof body.role !== "string" || !assignableRoles.has(body.role)) {
           throw new ApiError("VALIDATION_FAILED", "Invitation details are invalid.", 400);
         }
-        const invited = await deps.adminAuth.inviteUserByEmail(body.email.toLowerCase(), {
-          data: { workspace_id: workspaceId, role: body.role },
-        });
-        if (invited.error || !invited.data.user) throw new ApiError("INTERNAL_ERROR", "Invitation could not be sent.", 500);
+        const normalizedEmail = body.email.trim().toLowerCase();
+        const existing = await findExistingAuthUser(deps, normalizedEmail);
+        let memberId = existing?.userId;
+        if (!memberId) {
+          const invited = await deps.adminAuth.inviteUserByEmail(normalizedEmail, {
+            data: { workspace_id: workspaceId, role: body.role },
+          });
+          if (invited.error || !invited.data.user) throw new ApiError("INTERNAL_ERROR", "Invitation could not be sent.", 500);
+          memberId = invited.data.user.id;
+        }
         const table = privilegedClient(deps).from("workspace_members") as unknown as MemberTable;
-        const result = await table.insert({ workspace_id: workspaceId, user_id: invited.data.user.id, email: body.email.toLowerCase(), role: body.role, active: true });
+        const result = await table.insert({ workspace_id: workspaceId, user_id: memberId, email: normalizedEmail, role: body.role, active: true });
         if (result.error) throw result.error;
-        return jsonResponse({ memberId: invited.data.user.id }, request, 201);
+        return jsonResponse({ memberId }, request, 201);
       }
 
       if (typeof body.userId !== "string" || body.userId.length < 10) {
