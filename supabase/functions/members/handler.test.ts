@@ -72,3 +72,126 @@ test("owner cannot create or assign another owner through member administration"
   }));
   assert.equal(response.status, 400);
 });
+
+test("administrator can read a bounded member page with an opaque next cursor", async () => {
+  let requestedLimit = 0;
+  let requestedCursor = "";
+  const rows = [
+    { user_id: "member-3", email: "three@example.invalid", role: "bookkeeper" as const, active: true, created_at: "2026-09-28T03:00:00.000Z", updated_at: "2026-09-28T03:00:00.000Z" },
+    { user_id: "member-2", email: "two@example.invalid", role: "administrator" as const, active: true, created_at: "2026-09-28T02:00:00.000Z", updated_at: "2026-09-28T02:00:00.000Z" },
+    { user_id: "member-1", email: null, role: "bookkeeper" as const, active: false, created_at: "2026-09-28T01:00:00.000Z", updated_at: "2026-09-28T01:00:00.000Z" },
+  ];
+  const memberQuery = {
+    select() { return memberQuery; },
+    eq() { return memberQuery; },
+    lt() { return memberQuery; },
+    ilike() { return memberQuery; },
+    or(value: string) { requestedCursor = value; return memberQuery; },
+    order() { return memberQuery; },
+    async limit(value: number) { requestedLimit = value; return { data: rows, error: null }; },
+    async maybeSingle() { return { data: null, error: null }; },
+  };
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "administrator-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        return {
+          select() { return this; }, eq() { return this; },
+          async maybeSingle() { return { data: { workspace_id: "workspace-1", role: "administrator", active: true }, error: null }; },
+        };
+      },
+    },
+    adminDbClient: { from() { return memberQuery; } },
+    adminAuth: { async inviteUserByEmail() { throw new Error("not reached"); } },
+  });
+
+  const response = await handler(new Request("https://edge.example/members?limit=2&search=member", {
+    headers: { Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+  }));
+  const payload = await response.json() as { members: unknown[]; nextCursor: string | null };
+  assert.equal(response.status, 200);
+  assert.equal(requestedLimit, 3);
+  assert.equal(requestedCursor, "");
+  assert.equal(payload.members.length, 2);
+  assert.ok(payload.nextCursor);
+});
+
+test("bookkeeper cannot list members before the privileged dependency is touched", async () => {
+  let privilegedReads = 0;
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "bookkeeper-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        const builder = {
+          select() { return builder; }, eq() { return builder; },
+          async maybeSingle() { return { data: { workspace_id: "workspace-1", role: "bookkeeper", active: true }, error: null }; },
+        };
+        return builder;
+      },
+    },
+    adminDbClient: { from() { privilegedReads += 1; throw new Error("not reached"); } },
+    adminAuth: { async inviteUserByEmail() { throw new Error("not reached"); } },
+  });
+
+  const response = await handler(new Request("https://edge.example/members", {
+    headers: { Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+  }));
+  assert.equal(response.status, 403);
+  assert.equal(privilegedReads, 0);
+});
+
+test("member list rejects malformed cursors", async () => {
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "administrator-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        const builder = {
+          select() { return builder; }, eq() { return builder; },
+          async maybeSingle() { return { data: { workspace_id: "workspace-1", role: "administrator", active: true }, error: null }; },
+        };
+        return builder;
+      },
+    },
+    adminDbClient: { from() { throw new Error("not reached"); } },
+    adminAuth: { async inviteUserByEmail() { throw new Error("not reached"); } },
+  });
+
+  const response = await handler(new Request("https://edge.example/members?cursor=not-base64-json", {
+    headers: { Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+  }));
+  assert.equal(response.status, 400);
+});
+
+test("member operations cannot modify the owner membership", async () => {
+  let updates = 0;
+  const targetQuery = {
+    select() { return targetQuery; }, eq() { return targetQuery; },
+    async maybeSingle() { return { data: { user_id: "00000000-0000-0000-0000-000000000001", role: "owner" as const, active: true }, error: null }; },
+  };
+  const table = {
+    select() { return targetQuery; },
+    update() { updates += 1; return targetQuery; },
+    async insert() { return { error: null }; },
+  };
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "administrator-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        const builder = {
+          select() { return builder; }, eq() { return builder; },
+          async maybeSingle() { return { data: { workspace_id: "workspace-1", role: "administrator", active: true }, error: null }; },
+        };
+        return builder;
+      },
+    },
+    adminDbClient: { from() { return table; } },
+    adminAuth: { async inviteUserByEmail() { throw new Error("not reached"); } },
+  });
+  const response = await handler(new Request("https://edge.example/members", {
+    method: "POST",
+    headers: { "content-type": "application/json", Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+    body: JSON.stringify({ operation: "deactivate", userId: "00000000-0000-0000-0000-000000000001" }),
+  }));
+  assert.equal(response.status, 403);
+  assert.equal(updates, 0);
+});
