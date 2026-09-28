@@ -73,6 +73,52 @@ test("owner cannot create or assign another owner through member administration"
   assert.equal(response.status, 400);
 });
 
+test("owner can add an existing auth user without sending a duplicate invitation", async () => {
+  let insertedUserId = "";
+  let invitationCalls = 0;
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "owner-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        const builder = {
+          select() { return builder; }, eq() { return builder; },
+          async maybeSingle() { return { data: { workspace_id: "workspace-1", role: "owner", active: true }, error: null }; },
+        };
+        return builder;
+      },
+    },
+    adminDbClient: {
+      rpc(name: string, args: Record<string, string>) {
+        assert.equal(name, "find_auth_user_by_email");
+        assert.equal(args.target_email, "existing@example.invalid");
+        return Promise.resolve({ data: { user_id: "existing-user-1", email: "existing@example.invalid" }, error: null });
+      },
+      from() {
+        return {
+          async insert(values: Record<string, unknown>) {
+            insertedUserId = String(values.user_id);
+            return { error: null };
+          },
+        };
+      },
+    },
+    adminAuth: {
+      async inviteUserByEmail() {
+        invitationCalls += 1;
+        throw new Error("not reached");
+      },
+    },
+  });
+  const response = await handler(new Request("https://edge.example/members", {
+    method: "POST",
+    headers: { "content-type": "application/json", Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+    body: JSON.stringify({ operation: "invite", email: "EXISTING@example.invalid", role: "bookkeeper" }),
+  }));
+  assert.equal(response.status, 201);
+  assert.equal(insertedUserId, "existing-user-1");
+  assert.equal(invitationCalls, 0);
+});
+
 test("administrator can read a bounded member page with an opaque next cursor", async () => {
   let requestedLimit = 0;
   let requestedCursor = "";
