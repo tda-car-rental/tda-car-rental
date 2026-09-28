@@ -95,5 +95,6 @@ export function AuthGate({ auth, api, cloudApi, getCachedWorkspaceContext, onWor
   if (!context) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">{authState.status === "offline-authenticated" ? "Opening offline workspace..." : "Loading workspace..."}</div>;
   }
-  return <WorkspaceContextProvider value={context}><cloudApiContext.Provider value={cloudApi ?? null}>{children}</cloudApiContext.Provider></WorkspaceContextProvider>;
+  const resolvedCloudApi = cloudApi ?? (api as CloudApi);
+  return <WorkspaceContextProvider value={context}><CloudApiProvider value={resolvedCloudApi}>{children}</CloudApiProvider></WorkspaceContextProvider>;
 }
