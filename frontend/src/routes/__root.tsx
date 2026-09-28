@@ -180,7 +180,7 @@ function RootComponent() {
       ) : "error" in runtime ? (
         <div className="flex min-h-screen items-center justify-center text-sm text-destructive">{runtime.error}</div>
       ) : (
-        <AuthGate auth={runtime.auth} api={runtime.api} getCachedWorkspaceContext={async () => readCachedWorkspaceContext()} onWorkspaceReady={onWorkspaceReady}>
+          <AuthGate auth={runtime.auth} api={runtime.api} cloudApi={runtime.api} getCachedWorkspaceContext={async () => readCachedWorkspaceContext()} onWorkspaceReady={onWorkspaceReady}>
           <Outlet />
         </AuthGate>
       )}

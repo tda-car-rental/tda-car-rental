@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, FileText, FileSpreadsheet, FileSignature } from "lucide-react";
+import { LayoutDashboard, FileText, FileSpreadsheet, FileSignature, ShieldCheck } from "lucide-react";
 import type { ReactNode as RN } from "react";
+import { useOptionalWorkspaceContext } from "./auth/AuthGate";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -12,6 +13,8 @@ const nav = [
 
 export function AppLayout({ children, title }: { children: RN; title: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const workspace = useOptionalWorkspaceContext();
+  const canAccessAdmin = workspace?.role === "owner" || workspace?.role === "administrator";
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <aside className="flex h-screen w-56 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
@@ -38,6 +41,15 @@ export function AppLayout({ children, title }: { children: RN; title: string }) 
               </Link>
             );
           })}
+          {canAccessAdmin ? (
+            <Link
+              to="/admin"
+              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${pathname.startsWith("/admin") ? "bg-sidebar-primary text-sidebar-primary-foreground" : "hover:bg-sidebar-accent"}`}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Admin
+            </Link>
+          ) : null}
         </nav>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { LoginPage } from "./LoginPage";
 import type { AuthState } from "@/lib/auth";
 import type { WorkspaceContext } from "@/lib/cloud-types";
+import type { CloudApi } from "@/lib/cloud-api";
 
 type AuthLike = {
   getState(): AuthState;
@@ -13,6 +14,7 @@ type AuthLike = {
 type ApiLike = { getWorkspaceContext(): Promise<WorkspaceContext> };
 
 const workspaceContext = createContext<WorkspaceContext | null>(null);
+const cloudApiContext = createContext<CloudApi | null>(null);
 
 export function useWorkspaceContext(): WorkspaceContext {
   const context = useContext(workspaceContext);
@@ -20,11 +22,21 @@ export function useWorkspaceContext(): WorkspaceContext {
   return context;
 }
 
+export function useOptionalWorkspaceContext(): WorkspaceContext | null {
+  return useContext(workspaceContext);
+}
+
+export function useCloudApi(): CloudApi {
+  const api = useContext(cloudApiContext);
+  if (!api) throw new Error("Cloud API is required.");
+  return api;
+}
+
 export function WorkspaceContextProvider({ value, children }: { value: WorkspaceContext; children: ReactNode }) {
   return <workspaceContext.Provider value={value}>{children}</workspaceContext.Provider>;
 }
 
-export function AuthGate({ auth, api, getCachedWorkspaceContext, onWorkspaceReady, children }: { auth: AuthLike; api: ApiLike; getCachedWorkspaceContext?: () => Promise<WorkspaceContext | null>; onWorkspaceReady?: (context: WorkspaceContext) => void; children: ReactNode }) {
+export function AuthGate({ auth, api, cloudApi, getCachedWorkspaceContext, onWorkspaceReady, children }: { auth: AuthLike; api: ApiLike; cloudApi?: CloudApi; getCachedWorkspaceContext?: () => Promise<WorkspaceContext | null>; onWorkspaceReady?: (context: WorkspaceContext) => void; children: ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(auth.getState());
   const [context, setContext] = useState<WorkspaceContext>();
   const [contextError, setContextError] = useState<string>();
@@ -79,5 +91,5 @@ export function AuthGate({ auth, api, getCachedWorkspaceContext, onWorkspaceRead
   if (!context) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">{authState.status === "offline-authenticated" ? "Opening offline workspace..." : "Loading workspace..."}</div>;
   }
-  return <WorkspaceContextProvider value={context}>{children}</WorkspaceContextProvider>;
+  return <WorkspaceContextProvider value={context}><cloudApiContext.Provider value={cloudApi ?? null}>{children}</cloudApiContext.Provider></WorkspaceContextProvider>;
 }

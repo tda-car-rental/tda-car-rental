@@ -102,3 +102,5 @@ export function createCloudApi(options: CloudApiOptions) {
     },
   };
 }
+
+export type CloudApi = ReturnType<typeof createCloudApi>;
