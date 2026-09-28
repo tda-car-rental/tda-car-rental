@@ -94,7 +94,13 @@ test("owner can add an existing auth user without sending a duplicate invitation
         return Promise.resolve({ data: [{ user_id: "existing-user-1", email: "existing@example.invalid" }], error: null });
       },
       from() {
+        const query = {
+          select() { return query; },
+          eq() { return query; },
+          async maybeSingle() { return { data: null, error: null }; },
+        };
         return {
+          select() { return query; },
           async insert(values: Record<string, unknown>) {
             insertedUserId = String(values.user_id);
             return { error: null };
@@ -117,6 +123,55 @@ test("owner can add an existing auth user without sending a duplicate invitation
   assert.equal(response.status, 201);
   assert.equal(insertedUserId, "existing-user-1");
   assert.equal(invitationCalls, 0);
+});
+
+test("owner can re-add an existing auth user by reactivating its membership", async () => {
+  let updatedValues: Record<string, unknown> | undefined;
+  const memberQuery = {
+    select() { return memberQuery; },
+    eq() { return memberQuery; },
+    async maybeSingle() {
+      return { data: { user_id: "existing-user-1", role: "bookkeeper" as const, active: false }, error: null };
+    },
+  };
+  const table = {
+    select() { return memberQuery; },
+    update(values: Record<string, unknown>) {
+      updatedValues = values;
+      const updateQuery = {
+        eq() { return updateQuery; },
+        then(resolve: (value: unknown) => unknown) { return resolve({ error: null }); },
+      };
+      return updateQuery;
+    },
+    async insert() { throw new Error("not reached"); },
+  };
+  const handler = createMembersHandler({
+    authClient: { auth: { async getUser() { return { data: { user: { id: "owner-1" } }, error: null }; } } },
+    dbClient: {
+      from() {
+        const builder = {
+          select() { return builder; }, eq() { return builder; },
+          async maybeSingle() { return { data: { workspace_id: "workspace-1", role: "owner", active: true }, error: null }; },
+        };
+        return builder;
+      },
+    },
+    adminDbClient: {
+      rpc() {
+        return Promise.resolve({ data: [{ user_id: "existing-user-1", email: "existing@example.invalid" }], error: null });
+      },
+      from() { return table; },
+    },
+    adminAuth: { async inviteUserByEmail() { throw new Error("not reached"); } },
+  });
+  const response = await handler(new Request("https://edge.example/members", {
+    method: "POST",
+    headers: { "content-type": "application/json", Authorization: "Bearer token", "x-workspace-id": "workspace-1" },
+    body: JSON.stringify({ operation: "invite", email: "existing@example.invalid", role: "administrator" }),
+  }));
+  assert.equal(response.status, 200, await response.clone().text());
+  assert.deepEqual(updatedValues, { email: "existing@example.invalid", role: "administrator", active: true });
 });
 
 test("administrator can read a bounded member page with an opaque next cursor", async () => {
