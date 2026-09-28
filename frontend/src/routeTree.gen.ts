@@ -16,6 +16,7 @@ import { Route as BillingRouteImport } from './routes/billing'
 import { Route as ContractsRouteImport } from './routes/contracts'
 import { Route as QuotationRouteImport } from './routes/quotation'
 import { Route as AcknowledgementReceiptsNewRouteImport } from './routes/acknowledgement-receipts_.new'
+import { Route as AdminApiDocsRouteImport } from './routes/admin.api-docs'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as BillingNewRouteImport } from './routes/billing_.new'
 import { Route as QuotationNewRouteImport } from './routes/quotation_.new'
@@ -59,6 +60,11 @@ const AcknowledgementReceiptsNewRoute =
     path: '/acknowledgement-receipts/new',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdminApiDocsRoute = AdminApiDocsRouteImport.update({
+  id: '/api-docs',
+  path: '/api-docs',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/contracts': typeof ContractsRoute
   '/quotation': typeof QuotationRoute
   '/acknowledgement-receipts/new': typeof AcknowledgementReceiptsNewRoute
+  '/admin/api-docs': typeof AdminApiDocsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/billing/new': typeof BillingNewRoute
   '/quotation/new': typeof QuotationNewRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/contracts': typeof ContractsRoute
   '/quotation': typeof QuotationRoute
   '/acknowledgement-receipts/new': typeof AcknowledgementReceiptsNewRoute
+  '/admin/api-docs': typeof AdminApiDocsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/billing/new': typeof BillingNewRoute
   '/quotation/new': typeof QuotationNewRoute
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/contracts': typeof ContractsRoute
   '/quotation': typeof QuotationRoute
   '/acknowledgement-receipts_/new': typeof AcknowledgementReceiptsNewRoute
+  '/admin/api-docs': typeof AdminApiDocsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/billing_/new': typeof BillingNewRoute
   '/quotation_/new': typeof QuotationNewRoute
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/quotation'
     | '/acknowledgement-receipts/new'
+    | '/admin/api-docs'
     | '/admin/settings'
     | '/billing/new'
     | '/quotation/new'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/quotation'
     | '/acknowledgement-receipts/new'
+    | '/admin/api-docs'
     | '/admin/settings'
     | '/billing/new'
     | '/quotation/new'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/contracts'
     | '/quotation'
     | '/acknowledgement-receipts_/new'
+    | '/admin/api-docs'
     | '/admin/settings'
     | '/billing_/new'
     | '/quotation_/new'
@@ -251,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcknowledgementReceiptsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/api-docs': {
+      id: '/admin/api-docs'
+      path: '/api-docs'
+      fullPath: '/admin/api-docs'
+      preLoaderRoute: typeof AdminApiDocsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -297,10 +316,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminApiDocsRoute: typeof AdminApiDocsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminApiDocsRoute: AdminApiDocsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
 }
 
